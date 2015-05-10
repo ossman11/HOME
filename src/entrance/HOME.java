@@ -3,6 +3,15 @@
  */
 package entrance;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.TimeZone;
+
+import network.DB;
+import network.FTP;
+import network.HTTP;
+
 /**
  * @author Bob den Os
  * HOME is the core of the House Open Management Enviroment.
@@ -20,12 +29,38 @@ package entrance;
  */
 public class HOME {
 
+	// Public Values	
+	public HTTP http = null;
+	public FTP ftp = null;
+	public DB db = null;
+	
+	// Private Values
+	
+	// Public Functions
+	public String getServerTime() {
+	    Calendar calendar = Calendar.getInstance();
+	    SimpleDateFormat dateFormat = new SimpleDateFormat(
+	        "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+	    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+	    return dateFormat.format(calendar.getTime());
+	}
+	
+	// Private Functions
+	
+	// HTTP Constructors
+	
+	public HOME() {
+		// creates Console
+		System.out.println("Starting up Stuff");
+		// Starts Servers
+		http = new HTTP(this);
+	}
+	
 	/**
 	 * @param args
+	 * Starts HOME server
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+		new HOME();
 	}
-
 }
