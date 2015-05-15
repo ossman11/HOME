@@ -4,20 +4,14 @@
 package network;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.Console;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
@@ -47,7 +41,8 @@ public class HTTP {
 	// Private Classes
 	
 	// HTTP protocol classes
-    private class Method
+	// HTTP Request Methods
+	public class Method
     {
         // public values
         public int Nr;
@@ -86,7 +81,7 @@ public class HTTP {
             return Methods.length;
         }
     }
-
+	// HTTP Request Status
     public class Status
     {
         // public Values
@@ -147,7 +142,7 @@ public class HTTP {
             return 35;
         }
     }
-
+    // HTTP Headers
     public enum HeaderId
     {
         Accept, AcceptCharset, AcceptEncoding, AcceptLanguage, AcceptRanges,
@@ -155,9 +150,9 @@ public class HTTP {
         ContentEncoding, ContentLanguage, ContentLength, ContentLocation, ContentMD5, ContentRange, ContentType, Date, ETag, Expect, Expires, From, Host,
         IfMatch, IfModifiedSince, IfNoneMatch, IfRange, IfUnmodifiedSince, LastModified,
         Location, MaxForwards, Pragma, ProxyAuthenticate, ProxyAuthorization,
-        Range, Referer, RetryAfter, Server, TE, Trailer, TransferEncoding, Upgrade, UserAgent, Vary, Via, Warning, WWWAuthenticate
+        Range, Referer, RetryAfter, Server, TE, Trailer, TransferEncoding, Upgrade, UserAgent, Vary, Via, Warning, WWWAuthenticate;
     }
-	
+	// HTTP Request and Responce Headers
     public class Header
     {
         // public Values
@@ -230,10 +225,12 @@ public class HTTP {
 		public Header[] Headers = null;
 		public Boolean Secure = false;
 		
+		public byte[] NotFound = null;
+		
 		// Private Values
 		
 		// Public Functions
-		public byte[] ByteResponce(){
+		public byte[] ByteResponce(){			
 			StringBuilder SB = new StringBuilder();
 			StringBuilder CB = new StringBuilder();
 			
@@ -241,12 +238,19 @@ public class HTTP {
 
 			SB.append(Protocol + " 200 OK" + System.lineSeparator());
 			SB.append("Date: " + H.getServerTime() + System.lineSeparator());
-			if(Request.contains("favicon.ico")) {
+			if(Request.contains(".")) {
 				// Send Custom Favicon				
 				byte[] fav;
 				try {
 					ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-					String favURL = classLoader.getResource("favicon.png").getPath();
+					Request = Request.replace(".ico", ".png").substring(1);
+					URL tmpURL = classLoader.getResource(Request);
+					String favURL = null;
+					if(tmpURL != null) {
+						favURL = tmpURL.getPath();
+					} else {
+						return NotFound;
+					}
 					favURL = favURL.replace("%20", " ");
 					while(favURL.charAt(0) == '/')
 					{
@@ -266,7 +270,7 @@ public class HTTP {
 					return ret;
 				} catch (IOException e) {
 					e.printStackTrace();
-					return "HTTP/1.1 404 NOT FOUND".getBytes(Charset.forName("UTF-8"));
+					return NotFound;
 				}
 			} else {
 				// Send standard responce
@@ -283,10 +287,20 @@ public class HTTP {
 		
 		// HTTPHandler Constructors
 		public HTTPHandler(ArrayList<String> request, Boolean secure) {
+			// Setup
 			Secure = secure;
 			String[] tmpReq = request.get(0).split(" ");
 			Request = tmpReq[1];
 			Protocol = tmpReq[2];
+			
+			// Setup 404
+			String NFStr = Protocol + " 404 Not Found" + System.lineSeparator();
+			NFStr += new Header(HeaderId.Connection, "close").toString() + System.lineSeparator();
+			NFStr += new Header(HeaderId.ContentType, "text/html").toString() + System.lineSeparator();
+			NFStr += new Header(HeaderId.Date, H.getServerTime()).toString() + System.lineSeparator();
+			NFStr += System.lineSeparator();
+			NotFound = NFStr.getBytes(Charset.forName("UTF-8"));
+			
 			Method = new Method(tmpReq[0]);
 			Headers = new Header[HeaderId.values().length];
 			for(int i = 1; i < request.size()-1; i++) {
