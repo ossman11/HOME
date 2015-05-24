@@ -8,6 +8,9 @@ import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import closset.DataBase;
+import closset.DataBase.Table;
+import closset.Folders;
 import network.DB;
 import network.FTP;
 import network.HTTP;
@@ -29,7 +32,10 @@ import network.HTTP;
  */
 public class HOME {
 
-	// Public Values	
+	// Public Values
+	public Folders folder = null;
+	public DataBase database = null;
+	
 	public HTTP http = null;
 	public FTP ftp = null;
 	public DB db = null;
@@ -50,7 +56,20 @@ public class HOME {
 	// HTTP Constructors
 	
 	public HOME() {
-		// creates Console
+		// Initiation Backend
+		folder = new Folders();
+		database = new DataBase(this);
+		
+		Table tt = database.new Table(
+				"Test", 
+				new String[]{"First","Last","Age"},
+				new Class<?>[]{String.class,String.class,Integer.class}
+		);
+		
+		tt.Save();
+		
+		System.out.println(tt.toString());
+		
 		System.out.println("Starting up Stuff");
 		// Starts Servers
 		http = new HTTP(this);

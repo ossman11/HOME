@@ -3,19 +3,20 @@
  */
 package network;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import entrance.HOME;
+import closset.Folders;
+
+import com.Portal;
 
 /**
  * @author Bob den Os
@@ -29,6 +30,7 @@ public class HTTP {
 	
 	// Private Values
 	private HOME H = null;
+	private Portal P = null;
 	private SocketThread OST = null;
 	private SocketThread SST = null;
 	
@@ -49,19 +51,19 @@ public class HTTP {
         public String Val;
 
         // private values
-        private final String[] Methods = new String[]
-        {
-            "OPTIONS", // connection test (basic responce 200 + Allow)
-            "GET", // request of url (conditional GET include if-* header)
-            "HEAD", // = GET - data
-            "POST", // handle embeded data in uri
-            "PUT", // handle Content-* or rsponce 501 (Not Implemented)
-            "DELETE", // remove content (ignore)
-            "TRACE", // 200 (OK) + Content-Type: message/http
-            "CONNECT", // proxy method (ignore)
-            "ERROR"
-        };
-
+        private final List<String> Methods = Arrays.asList(
+        	new String[]{
+                "OPTIONS", // connection test (basic responce 200 + Allow)
+                "GET", // request of url (conditional GET include if-* header)
+                "HEAD", // = GET - data
+                "POST", // handle embeded data in uri
+                "PUT", // handle Content-* or rsponce 501 (Not Implemented)
+                "DELETE", // remove content (ignore)
+                "TRACE", // 200 (OK) + Content-Type: message/http
+                "CONNECT", // proxy method (ignore)
+                "ERROR"
+            });
+        
         // Constructors
         public Method(String method)
         {
@@ -74,11 +76,7 @@ public class HTTP {
         // Handlers
         private int GetMethodNr(String method)
         {
-            for (int i = 0; i < Methods.length; i++)
-            {
-                if (Methods[i] == method) { return i; }
-            }
-            return Methods.length;
+            return Methods.indexOf(method);
         }
     }
 	// HTTP Request Status
@@ -147,7 +145,7 @@ public class HTTP {
     {
         Accept, AcceptCharset, AcceptEncoding, AcceptLanguage, AcceptRanges,
         Age, Allow, Authorization, CacheControl, Connection,
-        ContentEncoding, ContentLanguage, ContentLength, ContentLocation, ContentMD5, ContentRange, ContentType, Date, ETag, Expect, Expires, From, Host,
+        ContentEncoding, ContentLanguage, ContentLength, ContentLocation, ContentMD5, ContentRange, ContentType, Date, ETag, Expect, Expires, From, Host, Origin,
         IfMatch, IfModifiedSince, IfNoneMatch, IfRange, IfUnmodifiedSince, LastModified,
         Location, MaxForwards, Pragma, ProxyAuthenticate, ProxyAuthorization,
         Range, Referer, RetryAfter, Server, TE, Trailer, TransferEncoding, Upgrade, UserAgent, Vary, Via, Warning, WWWAuthenticate;
@@ -165,7 +163,7 @@ public class HTTP {
         {
             "Accept","Accept-Charset","Accept-Encoding","Accept-Language","Accept-Ranges", // client headers
             "Age","Allow","Authorization","Cache-Control","Connection", // 
-            "Content-Encoding","Content-Language","Content-Length","Content-Location","Content-MD5","Content-Range","Content-Type","Date","ETag","Expect","Expires","From","Host", // Server headers
+            "Content-Encoding","Content-Language","Content-Length","Content-Location","Content-MD5","Content-Range","Content-Type","Date","ETag","Expect","Expires","From","Host", "Origin", // Server headers
             "If-Match","If-Modified-Since","If-None-Match","If-Range","If-Unmodified-Since","Last-Modified", // conditional headers
             "Location","Max-Forwards","Pragma","Proxy-Authenticate","Proxy-Authorization", // Proxy headers
             "Range","Referer","Retry-After","Server","TE","Trailer","Transfer-Encoding","Upgrade","User-Agent","Vary","Via","Warning","WWW-Authenticate" // Rare headers
@@ -217,97 +215,101 @@ public class HTTP {
     }
     
     // HTTP Handler creates responces to request headers
-	private class HTTPHandler {
+	public class HTTPHandler {
 		// Public Values
+		public String Content = null;
 		public String Request = null;
 		public String Protocol = null;
 		public Method Method = null;
 		public Header[] Headers = null;
 		public Boolean Secure = false;
 		
-		public byte[] NotFound = null;
-		
+		public Boolean NotFound = false;		
 		// Private Values
 		
 		// Public Functions
 		public byte[] ByteResponce(){			
 			StringBuilder SB = new StringBuilder();
-			StringBuilder CB = new StringBuilder();
-			
-			CB.append("<html><head></head><body><h1>You got me :D</h1></body></html>");			
+			byte[] ret;
 
 			SB.append(Protocol + " 200 OK" + System.lineSeparator());
 			SB.append("Date: " + H.getServerTime() + System.lineSeparator());
 			if(Request.contains(".")) {
-				// Send Custom Favicon				
-				byte[] fav;
-				try {
-					ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-					Request = Request.replace(".ico", ".png").substring(1);
-					URL tmpURL = classLoader.getResource(Request);
-					String favURL = null;
-					if(tmpURL != null) {
-						favURL = tmpURL.getPath();
-					} else {
-						return NotFound;
-					}
-					favURL = favURL.replace("%20", " ");
-					while(favURL.charAt(0) == '/')
-					{
-						favURL = favURL.substring(1,favURL.length());
-					}
-					fav = Files.readAllBytes( Paths.get( favURL ) );
-					
-					SB.append("Content-Length: " + fav.length + System.lineSeparator());
-					SB.append("Content-Type: image/jpeg" + System.lineSeparator());
-					SB.append(System.lineSeparator());
-					byte[] head = SB.toString().getBytes(Charset.forName("UTF-8"));
-					byte[] ret = new byte[head.length + fav.length];
-					
+				// Check correct methods
+				if(Method.Nr != 1 && Method.Nr != 2){return RetNotFound();}
+				// Load file
+				Request = Request.replace("/favicon.ico", "/favicon.png");
+				byte[] file = H.folder.LoadLocalFile( "web/" + Request );
+				// Check if File exists
+				if(file == null){ return RetNotFound(); }
+				// Add Content Headers
+				SB.append("Content-Length: " + file.length + System.lineSeparator());
+				SB.append("Content-Type: image/png" + System.lineSeparator());
+				SB.append(System.lineSeparator());
+				// Bind bytes
+				byte[] head = SB.toString().getBytes(Charset.forName("UTF-8"));
+				if(Method.Nr == 1)
+				{
+					ret = new byte[head.length + file.length];
 					System.arraycopy(head,0,ret,0,head.length);
-					System.arraycopy(fav,0,ret,head.length,fav.length);
-					
-					return ret;
-				} catch (IOException e) {
-					e.printStackTrace();
-					return NotFound;
+					System.arraycopy(file,0,ret,head.length,file.length);
+				} else {
+					ret = head;
 				}
+				// Return final responce
+				return ret;
 			} else {
+				ret = H.folder.LoadLocalFile( "cache/" + Request.hashCode() + ".tmp" );
+				if(ret != null) {
+					return ret;
+				}
+				
+				String Content = P.GetPage(this);
+				if(Content == null) { return RetNotFound(); }
 				// Send standard responce
-				SB.append("Content-Length: " + CB.toString().length() + System.lineSeparator());
+				SB.append("Content-Length: " + Content.length() + System.lineSeparator());
 				SB.append("Content-Type:text/html;" + System.lineSeparator());
 				SB.append(System.lineSeparator());
-				SB.append(CB.toString());
-				
-				return SB.toString().getBytes();
+				if(Method.Nr != 2) {
+					SB.append(Content.toString());
+				}
+				// Convert to bytes and cache
+				ret = SB.toString().getBytes(Charset.forName("UTF-8"));
+				H.folder.SaveLocalFile( "cache/" + Request.hashCode() + ".tmp", ret);
+				return ret;
 			}
 		}
-		
+				
 		// Private Functions
-		
-		// HTTPHandler Constructors
-		public HTTPHandler(ArrayList<String> request, Boolean secure) {
-			// Setup
-			Secure = secure;
-			String[] tmpReq = request.get(0).split(" ");
-			Request = tmpReq[1];
-			Protocol = tmpReq[2];
+		private byte[] RetNotFound(){
+			NotFound = true;
 			
-			// Setup 404
 			String NFStr = Protocol + " 404 Not Found" + System.lineSeparator();
 			NFStr += new Header(HeaderId.Connection, "close").toString() + System.lineSeparator();
 			NFStr += new Header(HeaderId.ContentType, "text/html").toString() + System.lineSeparator();
 			NFStr += new Header(HeaderId.Date, H.getServerTime()).toString() + System.lineSeparator();
 			NFStr += System.lineSeparator();
-			NotFound = NFStr.getBytes(Charset.forName("UTF-8"));
+			return NFStr.getBytes(Charset.forName("UTF-8"));
+		}
+		
+		// HTTPHandler Constructors
+		public HTTPHandler(ArrayList<String> request, Boolean secure) {
+			System.out.print(request.get(0));
+			// Setup
+			Secure = secure;
+			String[] tmpReq = request.get(0).split(" ");
+			Request = tmpReq[1];
+			Protocol = tmpReq[2].substring(0,tmpReq[2].length()-2);
 			
 			Method = new Method(tmpReq[0]);
 			Headers = new Header[HeaderId.values().length];
-			for(int i = 1; i < request.size()-1; i++) {
+			for(int i = 1; i < request.size()-2; i++) {
 				if(request.get(i).indexOf(':') < 1){continue;}
 				Header tmp = new Header(request.get(i));
 				Headers[tmp.Nr] = tmp;
 			}
+			
+			Content = request.get(request.size()-1);
 		}
 	}
 	
@@ -353,7 +355,7 @@ public class HTTP {
 		
 		// Private Values
 		private OutputStream Writer = null;
-		private BufferedReader Reader = null;
+		private InputStreamReader Reader = null;
 		
 		private HTTPHandler request = null;
 		
@@ -365,26 +367,52 @@ public class HTTP {
 
         public void run() {
         	try {
+        		// Connection
         		Writer = CSocket.getOutputStream();
-				Reader = new BufferedReader( new InputStreamReader(CSocket.getInputStream()));
-				
-        		String in;
+				Reader = new InputStreamReader(CSocket.getInputStream());
+				Boolean R = true;
+				// Content Length
+				int CL = 0;
+				// Recieved DataStream
+        		char[] in = new char[1];
+        		String buff = "";
+        		// Buffered Data
         		ArrayList<String> RA = new ArrayList<String>();
         		
-				while ((in = Reader.readLine()) != null) {
-					RA.add(in);
-					System.out.println(in);
-					if(in.isEmpty()) {
-						System.out.println("Header Ended.");
-						// Converts Read lines to HTTPHandler
-						request = new HTTPHandler( RA, Secure);
-						RA = new ArrayList<String>();
-						// Send Responce back
-						Writer.write(request.ByteResponce());
-						System.out.println("Finished request.");
+				while (Reader.read(in) > -1 && R) {
+					buff+=in[0];
+					//System.out.println(((byte)in[0]));
+					if(in[0] == (char)10) {
+						RA.add(buff);
+						if(buff.startsWith("Content-Length: ")){ CL = Integer.parseInt(buff.substring(16, buff.length()-2)) ;}
+						if((byte)buff.charAt(0) == 13)
+						{
+							buff = "";
+							while(CL > 0){
+								Reader.read(in);
+								buff+=in[0];
+								CL--;
+							}
+							RA.add(buff);
+							
+							// Converts Read lines to HTTPHandler
+							request = new HTTPHandler( RA, Secure);
+							RA = new ArrayList<String>();
+							// Send Responce back
+							Writer.write(request.ByteResponce());
+							System.out.println("Finished request.");
+							// Check wether responce was a Not Found error and closes connection
+							if(request.NotFound) {				
+								break;
+							}
+						}
+						buff = "";
 					}
 				}
-
+				Writer.close();
+				Reader.close();
+				CSocket.close();
+				
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -395,6 +423,7 @@ public class HTTP {
 	public HTTP(HOME h) {
 		// Saves parent HOME
 		H = h;
+		P = new Portal(h);
 		
 		// Creates HTTP server threads
 		OST = new SocketThread(80);
