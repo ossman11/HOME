@@ -3,13 +3,24 @@
  */
 package closset;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author Bob den Os
@@ -29,7 +40,7 @@ public class Folders {
 	// Public Functions
 	public static String CleanUrl(String Url) {
 		// Replace Codes
-		Url.replace("%20", " ");
+		Url = Url.replace("%20", " ");
 		// Remove unwanted slashes
 		int S = Url.indexOf('/');
 		int C = Url.lastIndexOf(':');
@@ -46,19 +57,35 @@ public class Folders {
 		if(Url.charAt(0) == '/') { Url = Url.substring(1); }
 		try {
 			Path path = Paths.get( LocalDir + Url );
-			if(path == null) { return null; }
+			if(path == null || !Files.exists(path)) { return null; }
 			return Files.readAllBytes( path );
 		} catch (IOException e) { /* File Could not be found */}
 		return null;
 	}
 	
-	public Iterator<String> LoadLocalFileLines(String Url) {
+	public BufferedReader LoadLocalFileLines(String Url) throws IOException {
+		if(Url.charAt(0) == '/') { Url = Url.substring(1); }
+		Path path = Paths.get( LocalDir + Url );
+		if(path == null || !Files.exists(path)) { return null; }
+		CharsetDecoder dec=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.IGNORE);
+		
+		try {
+			Reader r = Channels.newReader(FileChannel.open(path), dec, -1); 
+			return new BufferedReader(r);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public List<String> LoadLocalFileList(String Url) {
 		if(Url.charAt(0) == '/') { Url = Url.substring(1); }
 		try {
 			Path path = Paths.get( LocalDir + Url );
-			if(path == null) { return null; }
-			return Files.lines(path).iterator();
-		} catch (IOException e) { /* File Could not be found */}
+			if(path == null || !Files.exists(path)) { return null; }
+			List<String> ret = Files.readAllLines(path);
+			return ret;
+		} catch (IOException e) { e.printStackTrace();/* File Could not be found */}
 		return null;
 	}
 	
@@ -66,15 +93,43 @@ public class Folders {
 		try {
 			Url = CleanUrl( LocalDir + Url );
 			Path path = Paths.get(Url);
-			if(path != null && !Files.exists(path)) {
-				Files.createFile(path, new FileAttribute<?>[]{});
+			if(path != null) {
+				if(!Files.exists(path))
+				{
+					Files.createFile(path, new FileAttribute<?>[]{});
+				}
+				Files.write(path, Data, new OpenOption[]{});
+			} else {
+				return false;
 			}
-			Files.write(path, Data, new OpenOption[]{});
 		} catch (IOException e) {
 			e.printStackTrace();
 			return false;
 		}
 		return true;
+	}
+	
+	public Writer SaveLocalFile(String Url) {
+		return SaveLocalFile( Url, true );
+	}
+	
+	public Writer SaveLocalFile(String Url, boolean OverWrite) {
+		try {
+			Url = CleanUrl( LocalDir + Url );
+			Path path = Paths.get(Url);
+			if(path != null) {
+				if(!Files.exists(path))
+				{
+					Files.createFile(path, new FileAttribute<?>[]{});
+				}
+				return new FileWriter( new File( path.toString() ), !OverWrite );
+			} else {
+				return null;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	public Iterator<Path> GetDirFiles(String Url) {

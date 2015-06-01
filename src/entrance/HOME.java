@@ -3,12 +3,19 @@
  */
 package entrance;
 
+import java.io.IOException;
+import java.io.Writer;
+import java.lang.instrument.Instrumentation;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.TimeZone;
 
 import closset.DataBase;
+import closset.DataBase.Row;
 import closset.DataBase.Table;
 import closset.Folders;
 import network.DB;
@@ -40,6 +47,8 @@ public class HOME {
 	public FTP ftp = null;
 	public DB db = null;
 	
+	public int Threads = 1;
+	
 	// Private Values
 	
 	// Public Functions
@@ -56,22 +65,15 @@ public class HOME {
 	// HTTP Constructors
 	
 	public HOME() {
+		System.out.println( System.getProperty("sun.arch.data.model") );
+		Threads = Runtime.getRuntime().availableProcessors();
 		// Initiation Backend
 		folder = new Folders();
 		database = new DataBase(this);
-		
-		Table tt = database.new Table(
-				"Test", 
-				new String[]{"First","Last","Age"},
-				new Class<?>[]{String.class,String.class,Integer.class}
-		);
-		
-		tt.Save();
-		
-		System.out.println(tt.toString());
-		
-		System.out.println("Starting up Stuff");
+		System.out.println("Loaded Database");
+
 		// Starts Servers
+		System.out.println("Starting up Servers");
 		http = new HTTP(this);
 	}
 	

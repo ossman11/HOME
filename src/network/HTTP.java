@@ -17,6 +17,7 @@ import entrance.HOME;
 import closset.Folders;
 
 import com.Portal;
+import com.web.Home;
 
 /**
  * @author Bob den Os
@@ -217,6 +218,7 @@ public class HTTP {
     // HTTP Handler creates responces to request headers
 	public class HTTPHandler {
 		// Public Values
+		public HOME Home = null;
 		public String Content = null;
 		public String Request = null;
 		public String Protocol = null;
@@ -233,13 +235,13 @@ public class HTTP {
 			byte[] ret;
 
 			SB.append(Protocol + " 200 OK" + System.lineSeparator());
-			SB.append("Date: " + H.getServerTime() + System.lineSeparator());
+			SB.append("Date: " + Home.getServerTime() + System.lineSeparator());
 			if(Request.contains(".")) {
 				// Check correct methods
 				if(Method.Nr != 1 && Method.Nr != 2){return RetNotFound();}
 				// Load file
 				Request = Request.replace("/favicon.ico", "/favicon.png");
-				byte[] file = H.folder.LoadLocalFile( "web/" + Request );
+				byte[] file = Home.folder.LoadLocalFile( "web/" + Request );
 				// Check if File exists
 				if(file == null){ return RetNotFound(); }
 				// Add Content Headers
@@ -259,11 +261,6 @@ public class HTTP {
 				// Return final responce
 				return ret;
 			} else {
-				ret = H.folder.LoadLocalFile( "cache/" + Request.hashCode() + ".tmp" );
-				if(ret != null) {
-					return ret;
-				}
-				
 				String Content = P.GetPage(this);
 				if(Content == null) { return RetNotFound(); }
 				// Send standard responce
@@ -275,7 +272,6 @@ public class HTTP {
 				}
 				// Convert to bytes and cache
 				ret = SB.toString().getBytes(Charset.forName("UTF-8"));
-				H.folder.SaveLocalFile( "cache/" + Request.hashCode() + ".tmp", ret);
 				return ret;
 			}
 		}
@@ -287,7 +283,7 @@ public class HTTP {
 			String NFStr = Protocol + " 404 Not Found" + System.lineSeparator();
 			NFStr += new Header(HeaderId.Connection, "close").toString() + System.lineSeparator();
 			NFStr += new Header(HeaderId.ContentType, "text/html").toString() + System.lineSeparator();
-			NFStr += new Header(HeaderId.Date, H.getServerTime()).toString() + System.lineSeparator();
+			NFStr += new Header(HeaderId.Date, Home.getServerTime()).toString() + System.lineSeparator();
 			NFStr += System.lineSeparator();
 			return NFStr.getBytes(Charset.forName("UTF-8"));
 		}
@@ -300,6 +296,8 @@ public class HTTP {
 			String[] tmpReq = request.get(0).split(" ");
 			Request = tmpReq[1];
 			Protocol = tmpReq[2].substring(0,tmpReq[2].length()-2);
+			
+			Home = H;
 			
 			Method = new Method(tmpReq[0]);
 			Headers = new Header[HeaderId.values().length];
