@@ -1,0 +1,17 @@
+/* Removing useless border around website */
+body{
+	margin:0;
+	padding:0;
+	min-height:100%;
+	position:relative;
+}
+.MenuItem{
+	color:white;
+	text-decoration:none;
+}
+.MenuItem div{
+	text-align:center;
+	min-width:50px;
+	padding: 20px 20px;
+	background-color:blue;	    
+}

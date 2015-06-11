@@ -3,6 +3,7 @@
  */
 package network;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -11,13 +12,12 @@ import java.net.Socket;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import entrance.HOME;
-import closset.Folders;
 
 import com.Portal;
-import com.web.Home;
 
 /**
  * @author Bob den Os
@@ -30,6 +30,10 @@ public class HTTP {
 	// Public Values
 	
 	// Private Values
+	private List<String> WEBFiles = null;
+	private byte[][] WEBCache = null;
+	private String BootTime = null;
+	
 	private HOME H = null;
 	private Portal P = null;
 	private SocketThread OST = null;
@@ -211,7 +215,11 @@ public class HTTP {
 
         public String toString()
         {
-            return Head + ": " + Val;
+            return Head + ": " + Val + System.lineSeparator();
+        }
+        
+        public byte[] toBytes(){
+        	return this.toString().getBytes(Charset.forName("UTF-8"));
         }
     }
     
@@ -228,64 +236,103 @@ public class HTTP {
 		
 		public Boolean NotFound = false;		
 		// Private Values
+		private String GetContentType(String url)
+        {
+            String end = url.substring(url.lastIndexOf('.')+1);
+            switch (end.toLowerCase())
+            {
+                // text
+                case "html":
+                    return "text/html";
+                case "js":
+                    return "text/javascript";
+                case "css":
+                    return "text/css";
+                case "xml":
+                    return "text/xml";
+                // Image
+                case "jpg":
+                    return "image/jpeg";
+                case "jpeg":
+                    return "image/jpeg";
+                case "gif":
+                    return "image/gif";
+                case "png":
+                    return "image/png";
+                // default
+                default:
+                    return "text/plain";
+            }
+        }
 		
 		// Public Functions
-		public byte[] ByteResponce(){			
-			StringBuilder SB = new StringBuilder();
-			byte[] ret;
-
-			SB.append(Protocol + " 200 OK" + System.lineSeparator());
-			SB.append("Date: " + Home.getServerTime() + System.lineSeparator());
+		public void write( OutputStream out ) throws IOException{	
 			if(Request.contains(".")) {
 				// Check correct methods
-				if(Method.Nr != 1 && Method.Nr != 2){return RetNotFound();}
+				if(Method.Nr != 1 && Method.Nr != 2){ RetNotFound(out); return; }
 				// Load file
 				Request = Request.replace("/favicon.ico", "/favicon.png");
-				byte[] file = Home.folder.LoadLocalFile( "web/" + Request );
+				int file = WEBFiles.indexOf("web"+Request);
 				// Check if File exists
-				if(file == null){ return RetNotFound(); }
-				// Add Content Headers
-				SB.append("Content-Length: " + file.length + System.lineSeparator());
-				SB.append("Content-Type: image/png" + System.lineSeparator());
-				SB.append(System.lineSeparator());
-				// Bind bytes
-				byte[] head = SB.toString().getBytes(Charset.forName("UTF-8"));
-				if(Method.Nr == 1)
-				{
-					ret = new byte[head.length + file.length];
-					System.arraycopy(head,0,ret,0,head.length);
-					System.arraycopy(file,0,ret,head.length,file.length);
-				} else {
-					ret = head;
+				if(file == -1){ RetNotFound(out); return; }
+				// Check Request headers
+				if(Headers[HeaderId.IfModifiedSince.ordinal()] != null && Headers[HeaderId.IfModifiedSince.ordinal()].Val.contains(BootTime)) {
+					out.write((Protocol + " 304 Not Modified" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+					out.write(new Header(HeaderId.CacheControl,"max-age=315360000").toBytes());
+					out.write(new Header(HeaderId.Date,Home.getServerTime()).toBytes());
+					out.write(new Header(HeaderId.Expires,"Thu, 31 Dec 2037 23:55:55 GMT").toBytes());
+					if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
+						out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
+					}	
+					out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
+					return;
 				}
-				// Return final responce
-				return ret;
+				// Respond
+				out.write((Protocol + " 200 OK" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+				out.write(new Header(HeaderId.Date, Home.getServerTime()).toBytes());
+				out.write(new Header(HeaderId.ContentLength, WEBCache[file].length+"").toBytes());
+				out.write(new Header(HeaderId.ContentType, GetContentType(Request)).toBytes());
+				out.write(new Header(HeaderId.LastModified, BootTime).toBytes());
+				
+				if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
+					out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
+				}	
+				out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
+				// Bind bytes
+				out.write(WEBCache[file]);
+				return;
 			} else {
 				String Content = P.GetPage(this);
-				if(Content == null) { return RetNotFound(); }
+				if(Content == null) { RetNotFound(out);return; }
 				// Send standard responce
-				SB.append("Content-Length: " + Content.length() + System.lineSeparator());
-				SB.append("Content-Type:text/html;" + System.lineSeparator());
-				SB.append(System.lineSeparator());
-				if(Method.Nr != 2) {
-					SB.append(Content.toString());
+				out.write((Protocol + " 200 OK" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+				out.write(new Header(HeaderId.Date, Home.getServerTime()).toBytes());
+				out.write(new Header(HeaderId.ContentLength, Content.length()+"").toBytes());
+				out.write(new Header(HeaderId.ContentType, "text/html").toBytes());
+
+				if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
+					out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
 				}
-				// Convert to bytes and cache
-				ret = SB.toString().getBytes(Charset.forName("UTF-8"));
-				return ret;
+				
+				out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
+				
+				if(Method.Nr != 2) {
+					out.write(Content.getBytes(Charset.forName("UTF-8")));
+				}
+				return;
 			}
 		}
 				
 		// Private Functions
-		private byte[] RetNotFound(){
+		private void RetNotFound( OutputStream out ) throws IOException{
 			NotFound = true;
 			
-			String NFStr = Protocol + " 404 Not Found" + System.lineSeparator();
-			NFStr += new Header(HeaderId.Connection, "close").toString() + System.lineSeparator();
-			NFStr += new Header(HeaderId.ContentType, "text/html").toString() + System.lineSeparator();
-			NFStr += new Header(HeaderId.Date, Home.getServerTime()).toString() + System.lineSeparator();
-			NFStr += System.lineSeparator();
-			return NFStr.getBytes(Charset.forName("UTF-8"));
+			out.write((Protocol + " 404 Not Found" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+			out.write( new Header(HeaderId.Connection, "close").toBytes() );
+			out.write( new Header(HeaderId.ContentType, "text/html").toBytes() );
+			out.write( new Header(HeaderId.Date, Home.getServerTime()).toBytes() );
+			out.write( System.lineSeparator().getBytes(Charset.forName("UTF-8")) );
+			return;
 		}
 		
 		// HTTPHandler Constructors
@@ -337,7 +384,7 @@ public class HTTP {
 					// Thread waits for a request
 					Socket RS = ServerSocket.accept();
 					RequestThread RT = new RequestThread( RS, Secure);
-					RT.run();
+					RT.start();
         		}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -348,14 +395,15 @@ public class HTTP {
 	private class RequestThread extends Thread {
 		
 		// Public Values
+		public ArrayList<ArrayList<String>> queue = null;
+		public OutputStream Writer = null;
+		
 		public Socket CSocket = null;
 		public Boolean Secure = false;
 		
 		// Private Values
-		private OutputStream Writer = null;
+		private HandlerThread Child = null;
 		private InputStreamReader Reader = null;
-		
-		private HTTPHandler request = null;
 		
 		public RequestThread(Socket socket, Boolean CType) {
 			// Create ServerSocket
@@ -368,16 +416,18 @@ public class HTTP {
         		// Connection
         		Writer = CSocket.getOutputStream();
 				Reader = new InputStreamReader(CSocket.getInputStream());
-				Boolean R = true;
 				// Content Length
 				int CL = 0;
 				// Recieved DataStream
         		char[] in = new char[1];
         		String buff = "";
         		// Buffered Data
+        		queue = new ArrayList<ArrayList<String>>();
+        		Child = new HandlerThread(this);
+        		Child.start();
         		ArrayList<String> RA = new ArrayList<String>();
         		
-				while (Reader.read(in) > -1 && R) {
+				while (Reader.read(in) > -1) {
 					buff+=in[0];
 					//System.out.println(((byte)in[0]));
 					if(in[0] == (char)10) {
@@ -392,36 +442,104 @@ public class HTTP {
 								CL--;
 							}
 							RA.add(buff);
-							
-							// Converts Read lines to HTTPHandler
-							request = new HTTPHandler( RA, Secure);
+							queue.add(new ArrayList<String>(RA));
 							RA = new ArrayList<String>();
-							// Send Responce back
-							Writer.write(request.ByteResponce());
-							System.out.println("Finished request.");
-							// Check wether responce was a Not Found error and closes connection
-							if(request.NotFound) {				
-								break;
-							}
 						}
 						buff = "";
 					}
 				}
-				Writer.close();
-				Reader.close();
-				CSocket.close();
-				
+				System.out.println("Quiting Request Thread");
+				Child.Quit();
 			} catch (IOException e) {
-				e.printStackTrace();
+				// it is almost supposed to happen.
+				// Without the message you don't even notice that using exceptions to kill threads is a bad idea.
+				// e.printStackTrace();
+			} finally {
+				Child = null;
+				try {
+					if(Writer != null) { Writer.close(); }
+					if(Reader != null) { Reader.close(); }
+					if(CSocket != null) { CSocket.close(); }
+				} catch (IOException e) {}
 			}
+        	return;
         }
     }
+	
+	private class HandlerThread extends Thread {
+		// Public Values
+		public Boolean Stopping = false;
+		
+		// Private Values
+		private RequestThread Par = null;
+		private OutputStream out = null;
+		
+		public HandlerThread(RequestThread RT) {
+			Par = RT;
+			out = Par.Writer;
+        }
+		
+		public void Quit()
+		{
+			Stopping = true;
+			while(Stopping){};
+			return;
+		}
 
+        public void run() {
+        	HTTPHandler tmp = null;
+        	while(out != null && Par.queue != null)
+        	{
+        		if(Stopping || !Par.isAlive() || Par == null || out == null){return;}
+        		if(Par.queue.size() > 0 && Par != null && out != null) {
+        			try {
+        				ArrayList<String> tmpRA = Par.queue.get(0);
+        				if(tmpRA != null)
+        				{
+        					tmp = new HTTPHandler(tmpRA, Par.Secure);
+            				Par.queue.remove(0);
+            				if(tmp != null) {
+            					tmp.write(out);
+            					if(tmp.NotFound) {
+            						Par.CSocket.close();
+            						break;
+            					}
+            				}
+        				}
+    				} catch (IOException e) {
+    					break;
+    				}
+        		}
+        	}
+        	Stopping = false;
+        }
+	}
+	
 	// HTTP Constructors
 	public HTTP(HOME h) {
 		// Saves parent HOME
 		H = h;
 		P = new Portal(h);
+		
+		ArrayList<File> FileList = new ArrayList<File>();
+		
+		H.folder.GetDirFiles(H.folder.LocalDir+"web/", FileList);
+		Iterator<File> FileIt = FileList.iterator();
+		
+		String[] UrlTMP = new String[FileList.size()];
+		WEBCache = new byte[FileList.size()][0];
+		int i = 0;
+		while(FileIt.hasNext()) {
+			File cur = FileIt.next();
+			UrlTMP[i] = cur.getAbsolutePath().replace("\\", "/");
+			UrlTMP[i] = UrlTMP[i].substring(UrlTMP[i].indexOf("bin/")+4);
+			System.out.println(UrlTMP[i]);
+			WEBCache[i] = H.folder.LoadLocalFile(UrlTMP[i]);
+			i++;
+		}
+		WEBFiles = Arrays.asList( UrlTMP );
+		UrlTMP = null;
+		BootTime = H.getServerTime();
 		
 		// Creates HTTP server threads
 		OST = new SocketThread(80);

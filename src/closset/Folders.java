@@ -5,10 +5,15 @@ package closset;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.CharsetDecoder;
@@ -19,6 +24,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -60,6 +66,19 @@ public class Folders {
 			if(path == null || !Files.exists(path)) { return null; }
 			return Files.readAllBytes( path );
 		} catch (IOException e) { /* File Could not be found */}
+		return null;
+	}
+	
+	public InputStream LoadLocalFileStream(String Url) {
+		if(Url.charAt(0) == '/') { Url = Url.substring(1); }
+		Path path = Paths.get( LocalDir + Url );
+		if(path == null || !Files.exists(path)) { return null; }
+		try {
+			InputStream r = Channels.newInputStream(FileChannel.open(path));
+			return r;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 	
@@ -140,6 +159,20 @@ public class Folders {
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	public void GetDirFiles(String directoryName, ArrayList<File> files) {
+	    File directory = new File(directoryName);
+
+	    // get all the files from a directory
+	    File[] fList = directory.listFiles();
+	    for (File file : fList) {
+	        if (file.isFile()) {
+	            files.add(file);
+	        } else if (file.isDirectory()) {
+	        	GetDirFiles(file.getAbsolutePath(), files);
+	        }
+	    }
 	}
 	
 	// Private Functions

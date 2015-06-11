@@ -41,12 +41,14 @@ public class Portal {
 			switch(Req.Method.Nr){
 				case 1: 
 					ret = PC.getMethod("doGet", new Class<?>[] {Req.getClass()}).invoke(this,Req).toString();
-					return Design.Paginate(ret,URI,TITLES);
+					break;
 				case 3:
 					ret = PC.getMethod("doPost", new Class<?>[] {Req.getClass()}).invoke(this,Req).toString();
-					return Design.Paginate(ret,URI,TITLES);
+					break;
 				default:return null;
 			}
+			if(ret == null) { return null; }
+			return Design.Paginate(ret, PNR, URI, TITLES);
 		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			e.printStackTrace();
 		}

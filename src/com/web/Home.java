@@ -22,16 +22,14 @@ public class Home extends Page {
 	// Public Functions
 	public static String doGet(HTTPHandler Req) {
 		
-		return "<html><head></head><body>" + 
-				"<h1>Welcome Home</h1>" + 
+		return	"<h1>Welcome Home</h1>" + 
 				Req.Home.database.Auth.toHTML() + 
 				"<form action='/' method='post'>" +
 				"<input name='User' type='text' />" +
 				"<input name='Pass' type='password' />" +
 				"<input name='Auth' type='text' />" +
 				"<input value='Submit' type='submit' />" +
-				"</form>" +
-				"</body></html>";
+				"</form>";
 	}
 	
 	public static String doPost(HTTPHandler Req) {

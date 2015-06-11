@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Graphs.js test</title>
+	<style>
+		body{
+			margin: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.Graph{
+			width:500px;
+			height:400px;
+		}
+		.Graph .circ{
+			border-radius: 100%;
+			margin: 3px;
+			width:10px;
+			height:10px;
+			float:left;
+		}
+		.Graph .Data{
+			float:left;
+			width:100%;
+			height:100%;
+		}
+		.Graph .Data .BAR{
+			float:left;
+			background-color: blue;
+		}
+		.Graph .Tags{
+			float:right;
+		}
+		.Graph .Tags:hover .Tag{
+			width:75px;
+		}
+		.Graph .Tags .Tag{
+			overflow:hidden;
+			width:26px;
+			height:16px;
+			cursor:pointer;
+			transition: width .258s;
+		}
+
+		.GC
+		{
+			margin:10%;
+			margin-top: -90%;
+			width: 80%;
+			height:80%;
+			overflow: hidden;
+			border-radius: 50%;
+			background-color: rgba(255,255,255,.1);
+			transition: width .128s, height .128s, margin .128s;
+		}
+		.GC.HighLight
+		{
+			margin:0%;
+			margin-top: -100%;
+			width: 100%;
+			height:100%;
+		}
+		.GC .GCC
+		{
+			border-radius: 50%;
+			width: 50%;
+			height: 10%;
+			padding-top: 20%;
+			padding-bottom: 20%;
+			text-align: center;
+			background-color: white;
+			margin: 25%;
+			z-index: 10;
+			position: relative;
+			box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+		}
+		.TH
+		{
+			float:left;
+			overflow: hidden;
+			width: 50%;
+			height: 50%;
+		}
+		.TI
+		{
+			position: relative;
+			background-color: rgb(253, 130, 41);
+			width: 200%;
+			height: 200%;
+			transform-origin:0 0;
+			-ms-transform-origin:0 0;
+			-webkit-transform-origin:0 0;
+		}
+		.TH:nth-child(1)
+		{
+			transform-origin:100% 100%;
+			-ms-transform-origin:100% 100%;
+			-webkit-transform-origin:100% 100%;
+		}
+		.TH:nth-child(2)
+		{
+			transform-origin:0% 100%;
+			-ms-transform-origin:0% 100%;
+			-webkit-transform-origin:0% 100%;
+		}
+		.TH:nth-child(3)
+		{
+			transform-origin:100% 0%;
+			-ms-transform-origin:100% 0%;
+			-webkit-transform-origin:100% 0%;
+		}
+		.TH:nth-child(4)
+		{
+			transform-origin:0% 0%;
+			-ms-transform-origin:0% 0%;
+			-webkit-transform-origin:0% 0%;
+		}
+		.TH:nth-child(1) .TI
+		{
+			top: 100%;
+			left: 100%;
+		}
+		.TH:nth-child(2) .TI
+		{
+			top: 100%;
+		}
+		.TH:nth-child(3) .TI
+		{
+			left: 100%;
+		}
+		.TH:nth-child(4) .TI
+		{
+			
+		}
+	</style>
+	<script src="JS/graph.js"></script>
+	<script>
+		function init(){
+			var dom = document.querySelector('#g');
+			var g = new Graph("PIE",
+				[
+					{"val":25, "tag":"2010", "col":"rgb(255,0,0)"},
+					{"val":34, "tag":"2011", "col":"rgb(128,128,0)"},
+					{"val":48, "tag":"2012", "col":"rgb(0,255,0)"},
+					{"val":67, "tag":"2013", "col":"rgb(0,128,128)"},
+					{"val":12, "tag":"2014", "col":"rgb(0,0,255)"},
+					{"val":54, "tag":"2015", "col":"rgb(128,0,128)"}
+				],
+				dom);
+			window.g = g;
+			g.Draw();
+		}
+	</script>
+</head>
+<body onload="init();">
+	<div id="g" class="Graph"></div>
+</body>
+</html>
