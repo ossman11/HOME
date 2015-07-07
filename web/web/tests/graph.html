@@ -20,45 +20,73 @@
 			float:left;
 		}
 		.Graph .Data{
-			float:left;
-			width:100%;
-			height:100%;
+			width:0;
+			height:0;
+			margin:0px auto;
+			margin-bottom: -100%;
+			transition: all .256s;
 		}
 		.Graph .Data .BAR{
 			float:left;
 			background-color: blue;
 		}
 		.Graph .Tags{
+			overflow: hidden;
+			margin-bottom: -100%;
 			float:right;
-		}
-		.Graph .Tags:hover .Tag{
-			width:75px;
+			height:100%;
+			transition: height .128s;
 		}
 		.Graph .Tags .Tag{
 			overflow:hidden;
-			width:26px;
+			width:auto;
 			height:16px;
 			cursor:pointer;
 			transition: width .258s;
 		}
-
+		.Graph .Title{
+			float:left;
+			width: 50%;
+		}
+		.Graph .Title div{
+			margin-left: 5px;
+			float:left;
+			cursor: pointer;
+		}
 		.GC
 		{
+			position:relative;
+			z-index:2;
 			margin:10%;
 			margin-top: -90%;
 			width: 80%;
 			height:80%;
 			overflow: hidden;
 			border-radius: 50%;
-			background-color: rgba(255,255,255,.1);
-			transition: width .128s, height .128s, margin .128s;
+			/*background-color: rgba(255,255,255,.1);*/
+			transition: width .128s, height .128s, margin .128s, z-index .128s;
 		}
 		.GC.HighLight
 		{
+			z-index: -10;
 			margin:0%;
 			margin-top: -100%;
 			width: 100%;
 			height:100%;
+		}
+		.GC .GC{
+			width:85%;
+			height:85%;
+			margin: auto;
+			margin-bottom: -100%;
+			top: -92.5%;
+			z-index: 1;
+		}
+		.GC .GC .GC{
+			width:80%;
+			height:80%;
+			top: -90%;
+			z-index: 1;
 		}
 		.GC .GCC
 		{
@@ -72,14 +100,21 @@
 			margin: 25%;
 			z-index: 10;
 			position: relative;
-			box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+			/*box-shadow: inset 0 0 5px rgba(0,0,0,0.3);*/
 		}
 		.TH
 		{
+			position: relative;
 			float:left;
 			overflow: hidden;
 			width: 50%;
 			height: 50%;
+
+			transform:rotate(-90deg);
+			-ms-transform:rotate(-90deg);
+			-webkit-transform:rotate(-90deg);
+
+			transition: transform linear .2s;
 		}
 		.TI
 		{
@@ -87,15 +122,22 @@
 			background-color: rgb(253, 130, 41);
 			width: 200%;
 			height: 200%;
+			transition: transform linear .2s;
+
 			transform-origin:0 0;
 			-ms-transform-origin:0 0;
 			-webkit-transform-origin:0 0;
 		}
 		.TH:nth-child(1)
 		{
+			transition-duration: .8s;
 			transform-origin:100% 100%;
 			-ms-transform-origin:100% 100%;
 			-webkit-transform-origin:100% 100%;
+
+			transform:rotate(-360deg);
+			-ms-transform:rotate(-360deg);
+			-webkit-transform:rotate(-360deg);
 		}
 		.TH:nth-child(2)
 		{
@@ -104,48 +146,71 @@
 			-webkit-transform-origin:0% 100%;
 		}
 		.TH:nth-child(3)
-		{
+		{			transition-duration: .6s;
 			transform-origin:100% 0%;
 			-ms-transform-origin:100% 0%;
 			-webkit-transform-origin:100% 0%;
+
+			transform:rotate(-270deg);
+			-ms-transform:rotate(-270deg);
+			-webkit-transform:rotate(-270deg);
 		}
 		.TH:nth-child(4)
 		{
+			transition-duration: .4s;
 			transform-origin:0% 0%;
 			-ms-transform-origin:0% 0%;
 			-webkit-transform-origin:0% 0%;
+
+			transform:rotate(-180deg);
+			-ms-transform:rotate(-180deg);
+			-webkit-transform:rotate(-180deg);
 		}
 		.TH:nth-child(1) .TI
 		{
 			top: 100%;
 			left: 100%;
+			transition-duration: .8s;
+			transform:rotate(90deg);
+			-ms-transform:rotate(90deg);
+			-webkit-transform:rotate(90deg);
 		}
 		.TH:nth-child(2) .TI
 		{
 			top: 100%;
+			transform:rotate(-180deg);
+			-ms-transform:rotate(-180deg);
+			-webkit-transform:rotate(-180deg);
 		}
 		.TH:nth-child(3) .TI
 		{
 			left: 100%;
+			transition-duration: .6s;
+			transform:rotate(0deg);
+			-ms-transform:rotate(0deg);
+			-webkit-transform:rotate(0deg);
 		}
 		.TH:nth-child(4) .TI
 		{
-			
+			transition-duration: .4s;
+			transform:rotate(-90deg);
+			-ms-transform:rotate(-90deg);
+			-webkit-transform:rotate(-90deg);
 		}
 	</style>
-	<script src="JS/graph.js"></script>
+	<script src="../JS/graph.js"></script>
 	<script>
 		function init(){
 			var dom = document.querySelector('#g');
-			var g = new Graph("PIE",
-				[
-					{"val":25, "tag":"2010", "col":"rgb(255,0,0)"},
-					{"val":34, "tag":"2011", "col":"rgb(128,128,0)"},
-					{"val":48, "tag":"2012", "col":"rgb(0,255,0)"},
-					{"val":67, "tag":"2013", "col":"rgb(0,128,128)"},
-					{"val":12, "tag":"2014", "col":"rgb(0,0,255)"},
-					{"val":54, "tag":"2015", "col":"rgb(128,0,128)"}
-				],
+
+			var ds = new Graph.DataSet(
+					[[["Fridge","Stove","Micro Wave","Kitchen"],["tv","sound","Living Room"],["Alarm","Night Light","Bed Room"],["Dryer","Wash Machine","Shower"],"2010"],"2011","2012","2013","2014","2015"],
+					[[[35,150,50],[225,75],[20,5],[350,400]],34,48,67,12,54],
+					"color"
+				);
+
+			var g = new Graph("CIR",
+				ds.val,
 				dom);
 			window.g = g;
 			g.Draw();
