@@ -1,17 +1,338 @@
 /* Removing useless border around website */
 body{
 	margin:0;
-	padding:0;
-	min-height:100%;
-	position:relative;
+	height:100%;
+	width: 100%;
+	position:absolute;
 }
-.MenuItem{
+.TopLayer{
+	overflow:hidden;
+	position:fixed;
+	top:0;
+	left:0;
+	right:0;
+	
+	z-index:100;
+	padding-bottom:20px;
+	
+	-webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+.MastHead{
+	position:fixed;
+	top:0px;
+	left:0px;
+	right:0px;
+	
+	height:50px;
+	width:100%;
+	
+	background-color:white;
+	
+	box-shadow:1px 1px 1px 1px rgba(0,0,0,.15);
+}
+
+.MastHead .LoadingBar{
+	overflow:hidden;
+	
+	width:0%;
+	height:50px;
+	
+	position:absolute;
+	float:right;
+	top:0px;
+	
+	background-color:blue;
+	transition:width 1s;
+}
+.MastHead .LoadingBar.Loading{
+	float:left;
+	width:100%;
+}
+.MastHead .LoadingBar div{
+	position:absolute;
+	left:0px;
+	top:0px;
+	height:50px;
+	width:100%;
+	animation-duration: 4s;
+	animation-iteration-count: infinite;
+}
+@keyframes LoadingFirst{
+    0% {width: 0%;}
+    25% {width: 100%;}
+    50% {width: 100%;}
+    75% {width: 100%;}
+    100% {width: 100%;}
+}
+@keyframes LoadingSecond{
+    0% {width: 0%;}
+    25% {width: 0%;}
+    50% {width: 100%;}
+    75% {width: 100%;}
+    100% {width: 100%;}
+}
+@keyframes LoadingThird{
+    0% {width: 0%;}
+    25% {width: 0%;}
+    50% {width: 0%;}
+    75% {width: 100%;}
+    100% {width: 100%;}
+}
+@keyframes LoadingFourth{
+    0% {width: 0%;}
+    25% {width: 0%;}
+    50% {width: 0%;}
+    75% {width: 0%;}
+    100% {width: 100%;}
+}
+.MastHead .LoadingBar div:nth-child(4n-3){
+	background-color:red;
+	animation-name: LoadingFirst;
+}
+.MastHead .LoadingBar div:nth-child(4n-2){
+	background-color:green;
+	animation-name: LoadingSecond;
+}
+.MastHead .LoadingBar div:nth-child(4n-1){
+	background-color:yellow;
+	animation-name: LoadingThird;
+}
+.MastHead .LoadingBar div:nth-child(4n+0){
+	background-color:blue;
+	animation-name: LoadingFourth;
+}
+
+.MastHead .ToggleMenu{
+	cursor:pointer;
+	position:absolute;
+	left:10px;
+	top:5px;
+	float:left;
+	height:36px;
+	width:36px;
+}
+.MastHead .ToggleMenu.Open{
+	width:206px;
+}
+.MastHead .ToggleMenu .Title{
+	margin-left:50px !important;
+	margin-top:-32px !important;
+	overflow:hidden;
+	width:0px;
+	height:32 !important;
+	font-size:26px;
+	text-shadow: 1px 1px 1px rgba(0,0,0,.25);
+	border:none !important;
+	background:none !important;
+	color:rgb(14,133,214) !important;
+	box-shadow:none !important;
+}
+.MastHead .ToggleMenu.Open .Title{
+	border:none;
+	width:170px;
+}
+.MastHead .ToggleMenu.Open:hover .Title{
+	border:none;
+	margin-top:-32px;
+}
+.MastHead .ToggleMenu div{
+	margin-top:7px;
+	
+	width:32px;
+	height:0px;
+	
+	background-color:rgb(14,133,214);
+	background-image:url("../favicon.png");
+	background-position-y: 2px;
+	
+	border:2px solid rgb(128,128,128);
+	border-radius:5px;
+	
+	box-shadow:1px 1px 1px 1px rgba(0,0,0,.15);
+	
+	transition:border .128s, height .128s, margin .128s, box-shadow .128s, width .128s;
+}
+.MastHead .ToggleMenu.Open div:nth-child(1),
+.MastHead .ToggleMenu:hover div:nth-child(1){
+	margin-top:2px;
+	height:32px;
+	border-color:rgb(14,133,214);
+	border-width:2px;
+	box-shadow:1px 1px 1px 1px rgba(0,0,0,.15);
+}
+.MastHead .ToggleMenu.Open div,
+.MastHead .ToggleMenu:hover div{
+	margin:0px;
+	height:0px;
+	border-width:0px;
+	box-shadow:0 0 0 0 rgba(0,0,0,.15);
+}
+
+.MastHead .ToggleNoti{
+	cursor:pointer;
+	position:absolute;
+	right:20px;
+	top:5px;
+	
+	width:32px;
+	height:25px;
+	
+	border:2px solid rgb(128,128,128);
+	border-radius:10px;
+	
+	background-color:white;
+	
+	box-shadow:1px 1px 1px 1px rgba(0,0,0,.15);
+	transition: background .128s;
+}
+.MastHead .ToggleNoti .Point{
+	margin-top:21px;
+	margin-left:7px;
+	
+	height:8px;
+	width:8px;
+	
+	border:0px solid rgb(128,128,128);
+	border-bottom-width:2px;
+	border-right-width:2px;
+	
+	background-color:white;
+	
+	transform:rotate(45deg);
+	box-shadow:1px 1px 1px 1px rgba(0,0,0,.15);
+	transition: background .128s;
+}
+.MastHead .ToggleNoti .Num{
+	margin-top: -33px;
+    text-align: center;
+    font-size:26px;
+    text-shadow: 1px 1px 1px rgba(0,0,0,.25);
+	color:rgb(128,128,128);
+	transition:color .128s;
+}
+.MastHead .ToggleNoti:hover .Num{
+	color:white;	
+}
+.MastHead .ToggleNoti:hover {
+	background-color:rgb(128,128,128);
+}
+.MastHead .ToggleNoti:hover .Point{
+	background-color:rgb(128,128,128);
+}
+
+.MastMenu{
+	overflow:hidden;
+	
+	position:fixed;
+	left:0px;
+	top:50px;
+	bottom:40px;
+
+	width:0px;
+	max-width:90%;
+	
+	background-color:white;
+	
+	box-shadow:1px 1px 1px 1px rgba(0,0,0,.15);
+	transition:width .128s;
+}
+.MastMenu.Open{
+	width:230px;
+}
+.MastMenu .MenuItem{
+	text-decoration: none;
+	color:rgb(14,133,214);
+	font-size:26px;
+	
+	text-shadow: 1px 1px 1px rgba(0,0,0,.25);
+	
+	width:230px;
+	height:50px;
+	display:block;
+}
+.MastMenu .MenuItem .back{
+	overflow:hidden;
+	float:left;
+	
+	background-color:rgb(14,133,214);
+	width:0px;
+	margin-left:9px;
+	padding:9px 0px;
+	
 	color:white;
-	text-decoration:none;
+	
+	transition:width .128s,margin .128s, padding .128s;
 }
-.MenuItem div{
-	text-align:center;
-	min-width:50px;
-	padding: 20px 20px;
-	background-color:blue;	    
+.MastMenu .MenuItem.Cur .back,
+.MastMenu .MenuItem:hover .back{
+	width:212px;
+	margin-left:0px;
+	padding:9px;
+}
+.MastMenu .MenuItem .title{
+	overflow:hidden;
+	
+	float:left;
+	margin-right:-230px;
+	
+	width:212px;
+	padding:9px;
+	
+	transition:width .128s,margin-left .128s, padding .128s;
+}
+.MastMenu .MenuItem.Cur .title,
+.MastMenu .MenuItem:hover .title{
+	margin-left:9px;
+	
+	padding-left:0px;
+	padding-right:0px;
+	
+	width:0px;
+}
+
+.MastNoti{
+	overflow:hidden;
+	
+	position:fixed;
+	right:0px;
+	top:50px;
+	bottom:40px;
+
+	width:0px;
+	max-width:90%;
+	
+	background-color:white;
+	
+	box-shadow:-1px 1px 1px 1px rgba(0,0,0,.15);
+	transition:width .128s;
+}
+.MastNoti.Open{
+	width:230px;
+}
+.MastCont{
+	min-width: 100%;
+	min-height: 100%;
+	
+	background-color:white;
+    transition: margin .128s, opacity .128s;
+}
+
+.MastCont .Center{
+	width: 900px;	
+	margin: 0px auto;
+	padding-top: 50px;
+	padding-bottom: 100px;
+}
+
+.MastFoot{
+	height: 250px;
+	min-width: 100%;
+	background-color: #141213;
+	
+	margin-top: -50px;
 }

@@ -23,13 +23,13 @@ public class Home extends Page {
 	public static String doGet(HTTPHandler Req) {
 		
 		return	"<h1>Welcome Home</h1>" + 
-				Req.Home.database.Auth.toHTML() + 
 				"<form action='/' method='post'>" +
 				"<input name='User' type='text' />" +
 				"<input name='Pass' type='password' />" +
 				"<input name='Auth' type='text' />" +
 				"<input value='Submit' type='submit' />" +
-				"</form>";
+				"</form>" +
+				Req.Home.database.Auth.toHTML();
 	}
 	
 	public static String doPost(HTTPHandler Req) {

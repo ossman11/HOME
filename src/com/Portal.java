@@ -29,6 +29,10 @@ public class Portal {
 	
 	// Public Functions
 	public String GetPage(HTTPHandler Req) {
+		boolean plain = Req.Request.startsWith("/PLAIN/");
+		if(plain){
+			Req.Request = Req.Request.substring(6);
+		}
 		// Lookup Page
 		int PNR = URI.indexOf(Req.Request);
 		// Page not found
@@ -48,6 +52,9 @@ public class Portal {
 				default:return null;
 			}
 			if(ret == null) { return null; }
+			if(plain){	
+				return ret;
+			}
 			return Design.Paginate(ret, PNR, URI, TITLES);
 		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			e.printStackTrace();
@@ -82,6 +89,7 @@ public class Portal {
 				tmpTitle += tmpClass.getDeclaredField("title").get(null);
 				// Save All Pages that have an url
 				if(tmpUrl != "") {
+					System.out.println(tmpUrl);
 					URI.add(tmpUrl);
 					TITLES.add(tmpTitle);
 					PClass.add(tmpClass);

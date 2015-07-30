@@ -274,11 +274,12 @@ public class DataBase {
 		public String toHTML() {
 			String SP = System.lineSeparator();
 			StringBuffer SB = new StringBuffer();
-			SB.append( "<!-- Readability Deal with it -->" + SP + "<Table>" + SP );
+			SB.append( "<table>" + SP );
 			SB.append( Meta.toHTML() );
 			for( int i = 0; i < Data.size(); i++) {
 				SB.append( Data.get(i).toHTML() );
 			}
+			SB.append("</table>");
 			return SB.toString();
 		}
 		

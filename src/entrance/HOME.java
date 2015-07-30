@@ -3,6 +3,9 @@
  */
 package entrance;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
@@ -53,11 +56,27 @@ public class HOME {
 	}
 	
 	// Private Functions
+	private void CommandListener(){
+		try {
+			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+			String in = null;
+			while((in = br.readLine()) != null){
+				switch(in){
+					case "reload": http.Reload();
+						System.out.println("HTTP Cache updated");
+						break;
+					default: System.out.println("unknown command: " + in);
+						break;
+				}
+			}
+		} catch (IOException ioe) {
+		   System.out.println("End of input stream.");
+		}
+	}
 	
 	// HTTP Constructors
 	
 	public HOME() {
-		System.out.println( System.getProperty("sun.arch.data.model") );
 		Threads = Runtime.getRuntime().availableProcessors();
 		// Initiation Backend
 		folder = new Folders();
@@ -67,6 +86,8 @@ public class HOME {
 		// Starts Servers
 		System.out.println("Starting up Servers");
 		http = new HTTP(this);
+
+		CommandListener();
 	}
 	
 	/**

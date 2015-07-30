@@ -30,16 +30,16 @@ public class HTTP {
 	// Public Values
 	
 	// Private Values
-	private List<String> WEBFiles = null;
-	private byte[][] WEBCache = null;
-	private String BootTime = null;
-	
 	private HOME H = null;
 	private Portal P = null;
+	private ContentManager M = null;
 	private SocketThread OST = null;
 	private SocketThread SST = null;
 	
 	// Public Functions
+	public void Reload(){
+		M.Reload();
+	}
 	
 	// Private Functions
 	
@@ -268,58 +268,9 @@ public class HTTP {
 		// Public Functions
 		public void write( OutputStream out ) throws IOException{	
 			if(Request.contains(".")) {
-				// Check correct methods
-				if(Method.Nr != 1 && Method.Nr != 2){ RetNotFound(out); return; }
-				// Load file
-				Request = Request.replace("/favicon.ico", "/favicon.png");
-				int file = WEBFiles.indexOf("web"+Request);
-				// Check if File exists
-				if(file == -1){ RetNotFound(out); return; }
-				// Check Request headers
-				if(Headers[HeaderId.IfModifiedSince.ordinal()] != null && Headers[HeaderId.IfModifiedSince.ordinal()].Val.contains(BootTime)) {
-					out.write((Protocol + " 304 Not Modified" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
-					out.write(new Header(HeaderId.CacheControl,"max-age=315360000").toBytes());
-					out.write(new Header(HeaderId.Date,Home.getServerTime()).toBytes());
-					out.write(new Header(HeaderId.Expires,"Thu, 31 Dec 2037 23:55:55 GMT").toBytes());
-					if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
-						out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
-					}	
-					out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
-					return;
-				}
-				// Respond
-				out.write((Protocol + " 200 OK" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
-				out.write(new Header(HeaderId.Date, Home.getServerTime()).toBytes());
-				out.write(new Header(HeaderId.ContentLength, WEBCache[file].length+"").toBytes());
-				out.write(new Header(HeaderId.ContentType, GetContentType(Request)).toBytes());
-				out.write(new Header(HeaderId.LastModified, BootTime).toBytes());
-				
-				if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
-					out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
-				}	
-				out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
-				// Bind bytes
-				out.write(WEBCache[file]);
-				return;
+				RetFile(out);
 			} else {
-				String Content = P.GetPage(this);
-				if(Content == null) { RetNotFound(out);return; }
-				// Send standard responce
-				out.write((Protocol + " 200 OK" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
-				out.write(new Header(HeaderId.Date, Home.getServerTime()).toBytes());
-				out.write(new Header(HeaderId.ContentLength, Content.length()+"").toBytes());
-				out.write(new Header(HeaderId.ContentType, "text/html").toBytes());
-
-				if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
-					out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
-				}
-				
-				out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
-				
-				if(Method.Nr != 2) {
-					out.write(Content.getBytes(Charset.forName("UTF-8")));
-				}
-				return;
+				RetPage(out);
 			}
 		}
 				
@@ -332,6 +283,63 @@ public class HTTP {
 			out.write( new Header(HeaderId.ContentType, "text/html").toBytes() );
 			out.write( new Header(HeaderId.Date, Home.getServerTime()).toBytes() );
 			out.write( System.lineSeparator().getBytes(Charset.forName("UTF-8")) );
+			return;
+		}
+		
+		private void RetFile( OutputStream out ) throws IOException{
+			// Check correct methods
+			if(Method.Nr != 1 && Method.Nr != 2){ RetNotFound(out); return; }
+			// Load file
+			Request = Request.replace("/favicon.ico", "/favicon.png");
+			byte[] file = M.Get(Request);
+			// Check if File exists
+			if(file == null){ RetNotFound(out); return; }
+			// Check Request headers
+			if(Headers[HeaderId.IfModifiedSince.ordinal()] != null && Headers[HeaderId.IfModifiedSince.ordinal()].Val.contains(M.GetTime())) {
+				out.write((Protocol + " 304 Not Modified" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+				out.write(new Header(HeaderId.CacheControl,"max-age=315360000").toBytes());
+				out.write(new Header(HeaderId.Date,Home.getServerTime()).toBytes());
+				out.write(new Header(HeaderId.Expires,"Thu, 31 Dec 2037 23:55:55 GMT").toBytes());
+				if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
+					out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
+				}	
+				out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
+				return;
+			}
+			// Respond
+			out.write((Protocol + " 200 OK" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+			out.write(new Header(HeaderId.Date, Home.getServerTime()).toBytes());
+			out.write(new Header(HeaderId.ContentLength, file.length+"").toBytes());
+			out.write(new Header(HeaderId.ContentType, GetContentType(Request)).toBytes());
+			out.write(new Header(HeaderId.LastModified, M.GetTime()).toBytes());
+			
+			if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
+				out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
+			}	
+			out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
+			// Bind bytes
+			out.write(file);
+			return;
+		}
+		
+		private void RetPage( OutputStream out ) throws IOException{
+			String Content = P.GetPage(this);
+			if(Content == null) { RetNotFound(out);return; }
+			// Send standard responce
+			out.write((Protocol + " 200 OK" + System.lineSeparator()).getBytes(Charset.forName("UTF-8")));
+			out.write(new Header(HeaderId.Date, Home.getServerTime()).toBytes());
+			out.write(new Header(HeaderId.ContentLength, Content.length()+"").toBytes());
+			out.write(new Header(HeaderId.ContentType, "text/html").toBytes());
+
+			if(Headers[9] != null && Headers[9].Val.contains("keep-alive")) {
+				out.write(new Header(HeaderId.Connection, "Keep-Alive").toBytes());
+			}
+			
+			out.write(System.lineSeparator().getBytes(Charset.forName("UTF-8")));
+			
+			if(Method.Nr != 2) {
+				out.write(Content.getBytes(Charset.forName("UTF-8")));
+			}
 			return;
 		}
 		
@@ -351,13 +359,15 @@ public class HTTP {
 			for(int i = 1; i < request.size()-2; i++) {
 				if(request.get(i).indexOf(':') < 1){continue;}
 				Header tmp = new Header(request.get(i));
-				Headers[tmp.Nr] = tmp;
+				if(tmp.Nr > -1){
+					Headers[tmp.Nr] = tmp;
+				}
 			}
 			
 			Content = request.get(request.size()-1);
 		}
 	}
-	
+
 	// Private Threads
 	private class SocketThread extends Thread {
 		
@@ -515,38 +525,119 @@ public class HTTP {
         }
 	}
 	
+	private class ContentManager{
+		// Public Values
+		
+		// Private Values
+		private List<String> WEBFiles = null;
+		private byte[][] WEBCache = null;
+		private long[] WEBDate = null;
+		
+		private String Time = null;
+		
+		// constructors
+		public ContentManager(){
+			Load();
+		}
+		
+		// public functions
+		public String GetTime(){
+			return Time;
+		}
+		
+		public byte[] Get(String url){
+			url = "web" + url;
+			int i = WEBFiles.indexOf( url );
+			if(i > -1 && i < WEBCache.length ){return WEBCache[i];}
+			System.out.println("Page not Found: " + url + " - " + i);
+			return null;			
+		}
+		
+		public void Reload(){	
+			ArrayList<File> FileList = new ArrayList<File>();
+			
+			H.folder.GetDirFiles(H.folder.LocalDir+"web/", FileList);
+			if(FileList.size() != WEBFiles.size()){Load(); return;}
+			
+			Iterator<File> FileIt = FileList.iterator();
+			
+			long[] DateTMP = new long[FileList.size()];
+			String[] UrlTMP = new String[FileList.size()];
+			
+			int i = 0;
+			while(FileIt.hasNext()) {
+				File cur = FileIt.next();
+				if(WEBFiles.get(i) != GetFileName(cur)){ Load(); }
+				if(WEBDate[i] < cur.lastModified())
+				{
+					DateTMP[i] = cur.lastModified();
+					UrlTMP[i] = cur.getAbsolutePath().replace("\\", "/");
+					UrlTMP[i] = UrlTMP[i].substring(UrlTMP[i].indexOf("bin/")+4);
+					WEBCache[i] = H.folder.LoadLocalFile(UrlTMP[i]);
+				} else {
+					DateTMP[i] = WEBDate[i];
+					UrlTMP[i] = WEBFiles.get(i);
+				}
+
+				i++;
+			}
+			WEBFiles = Arrays.asList( UrlTMP );
+			WEBDate = DateTMP;
+			
+			UrlTMP = null;
+			Time = H.getServerTime();
+		}
+		
+		// private functions
+		private void Load(){
+			ArrayList<File> FileList = new ArrayList<File>();
+			
+			H.folder.GetDirFiles(H.folder.LocalDir+"web/", FileList);
+			Iterator<File> FileIt = FileList.iterator();
+			
+			long[] DateTMP = new long[FileList.size()];
+			String[] UrlTMP = new String[FileList.size()];
+			WEBCache = new byte[FileList.size()][0];
+			
+			int i = 0;
+			while(FileIt.hasNext()) {
+				File cur = FileIt.next();
+				
+				DateTMP[i] = cur.lastModified();
+				UrlTMP[i] = cur.getAbsolutePath().replace("\\", "/");
+				UrlTMP[i] = UrlTMP[i].substring(UrlTMP[i].indexOf("bin/")+4);
+				//System.out.println(UrlTMP[i]);
+				WEBCache[i] = H.folder.LoadLocalFile(UrlTMP[i]);
+				
+				i++;
+			}
+			WEBFiles = Arrays.asList( UrlTMP );
+			WEBDate = DateTMP;
+			
+			UrlTMP = null;
+			Time = H.getServerTime();
+		}
+	
+		private String GetFileName(File c){
+			String file = c.getAbsolutePath().replace("\\", "/");
+			return file.substring(file.indexOf("bin/")+4);
+		}
+	}
+	
 	// HTTP Constructors
 	public HTTP(HOME h) {
 		// Saves parent HOME
 		H = h;
 		P = new Portal(h);
-		
-		ArrayList<File> FileList = new ArrayList<File>();
-		
-		H.folder.GetDirFiles(H.folder.LocalDir+"web/", FileList);
-		Iterator<File> FileIt = FileList.iterator();
-		
-		String[] UrlTMP = new String[FileList.size()];
-		WEBCache = new byte[FileList.size()][0];
-		int i = 0;
-		while(FileIt.hasNext()) {
-			File cur = FileIt.next();
-			UrlTMP[i] = cur.getAbsolutePath().replace("\\", "/");
-			UrlTMP[i] = UrlTMP[i].substring(UrlTMP[i].indexOf("bin/")+4);
-			System.out.println(UrlTMP[i]);
-			WEBCache[i] = H.folder.LoadLocalFile(UrlTMP[i]);
-			i++;
-		}
-		WEBFiles = Arrays.asList( UrlTMP );
-		UrlTMP = null;
-		BootTime = H.getServerTime();
+		M = new ContentManager();
+		M.Reload();
 		
 		// Creates HTTP server threads
 		OST = new SocketThread(80);
 		SST = new SocketThread(443);
 		
 		// Start Servers
-		OST.run();
-		SST.run();
+		OST.start();
+		SST.start();
 	}
 }
