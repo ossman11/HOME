@@ -5,15 +5,12 @@ package closset;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.CharsetDecoder;
@@ -137,11 +134,42 @@ public class Folders {
 			Url = CleanUrl( LocalDir + Url );
 			Path path = Paths.get(Url);
 			if(path != null) {
+				Path dir = path.getParent();
+				if(!Files.exists(dir)){
+					Files.createDirectories(dir, new FileAttribute<?>[]{});
+				}
 				if(!Files.exists(path))
 				{
 					Files.createFile(path, new FileAttribute<?>[]{});
 				}
 				return new FileWriter( new File( path.toString() ), !OverWrite );
+			} else {
+				return null;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	public FileOutputStream SaveLocalFileBinary(String Url) {
+		return SaveLocalFileBinary(Url,true);
+	}
+	
+	public FileOutputStream SaveLocalFileBinary(String Url, boolean OverWrite) {
+		try {
+			Url = CleanUrl( LocalDir + Url );
+			Path path = Paths.get(Url);
+			if(path != null) {
+				Path dir = path.getParent();
+				if(!Files.exists(dir)){
+					Files.createDirectories(dir, new FileAttribute<?>[]{});
+				}
+				if(!Files.exists(path))
+				{
+					Files.createFile(path, new FileAttribute<?>[]{});
+				}
+				return new FileOutputStream( new File( path.toString() ), !OverWrite );
 			} else {
 				return null;
 			}

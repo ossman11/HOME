@@ -266,7 +266,7 @@ public class HTTP {
         }
 		
 		// Public Functions
-		public void write( OutputStream out ) throws IOException{	
+		public void write( OutputStream out ) throws IOException{
 			if(Request.contains(".")) {
 				RetFile(out);
 			} else {
@@ -416,6 +416,7 @@ public class HTTP {
 		private InputStreamReader Reader = null;
 		
 		public RequestThread(Socket socket, Boolean CType) {
+			System.out.println("Started request Thread.");
 			// Create ServerSocket
 			Secure = CType;
 			CSocket = socket;
@@ -472,6 +473,7 @@ public class HTTP {
 					if(CSocket != null) { CSocket.close(); }
 				} catch (IOException e) {}
 			}
+        	System.out.println("Stopped request Thread.");
         	return;
         }
     }
@@ -485,6 +487,7 @@ public class HTTP {
 		private OutputStream out = null;
 		
 		public HandlerThread(RequestThread RT) {
+			System.out.println("Starting Handler Thread.");
 			Par = RT;
 			out = Par.Writer;
         }
@@ -520,8 +523,15 @@ public class HTTP {
     					break;
     				}
         		}
+        		try {
+					Thread.sleep(100l);
+				} catch (InterruptedException e) {
+					// Stop thread when interupted sleep
+					Stopping = true;
+				}
         	}
         	Stopping = false;
+        	System.out.println("Stopped Handler Thread.");
         }
 	}
 	

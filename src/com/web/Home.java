@@ -5,7 +5,12 @@ package com.web;
 
 import network.HTTP.HTTPHandler;
 
+import java.util.Date;
+
 import com.Page;
+
+import closset.DataBase.SubTable;
+import closset.DataBase.Table;
 
 /**
  * @author laptop
@@ -21,47 +26,44 @@ public class Home extends Page {
 	
 	// Public Functions
 	public static String doGet(HTTPHandler Req) {
-		
-		return	"<h1>Welcome Home</h1>" + 
+		String ret = "<h1>Welcome Home</h1>" + 
 				"<form action='/' method='post'>" +
-				"<input name='User' type='text' />" +
-				"<input name='Pass' type='password' />" +
-				"<input name='Auth' type='text' />" +
+				"<input name='Name' type='text' />" +
 				"<input value='Submit' type='submit' />" +
-				"</form>" +
-				Req.Home.database.Auth.toHTML();
+				"</form>";
+		/*
+		long start = new Date().getTime();
+		String dbtable = Req.Home.database.tables.get(0).toHTML();
+		long e = new Date().getTime();
+		*/
+		ret += "<div><h1>" + Req.Home.database.tables.get(0).Size() + " lines</h1></div>";
+		// ret += dbtable;
+		
+		return	ret;
+				
 	}
 	
 	public static String doPost(HTTPHandler Req) {
 		String[] vals = Req.Content.split("&");
 		
-		String Pass = "";
-		String User = "";
-		String Auth = "";
-		String Salt = System.nanoTime()+"";
+		String Name = "";
 		
 		for(int i = 0; i < vals.length; i++) {
 			String[] cur = vals[i].split("=");
 			if(cur.length == 1){cur = new String[]{cur[0],""};}
 
 			switch(cur[0]) {
-				case "User": User = cur[1];
-					break;
-				case "Pass": Pass = cur[1];
-					break;
-				case "Auth": Auth = cur[1];
+				case "Name": Name = cur[1];
 					break;
 				default: continue;
 			}
 		}
+		long s = new Date().getTime();
+		SubTable result = Req.Home.database.tables.get(0).Find("First", Name);
+		long e = new Date().getTime();
 		
-		Pass = String.valueOf( (Pass + Salt).hashCode() );
-		
-		Req.Home.database.Auth.Add(new String[]{User,Pass,Salt,Auth});
-		
-		Req.Home.database.Auth.Save();
-		
-		return "<html><head></head><body><h1>Welcome Home</h1>" + Req.Content + "</body></html>";
+		return "<html><head></head><body><h1>Welcome Home</h1>" + 
+			Req.Content + "<h1>" + (e-s) + "</h1>" + result.toHTML() + "</body></html>";
 	}
 	
 	// Private Functions
