@@ -38,7 +38,6 @@ public class Folders {
 	public String LocalDir;
 	
 	// Private Values
-	private ClassLoader CLoader;
 	
 	// Public Functions
 	public static String CleanUrl(String Url) {
@@ -55,7 +54,13 @@ public class Folders {
 		}
 		return Url;
 	}
-	
+
+	public static String GetLocalUrl(Object o){
+		String ThisClass = o.getClass().getName().replace('.','/')+".class";
+		String tmpDir = o.getClass().getClassLoader().getResource(ThisClass).getPath();
+		return CleanUrl( tmpDir.substring( 0, tmpDir.indexOf(ThisClass) ) );
+	}
+
 	public byte[] LoadLocalFile(String Url) {
 		if(Url.charAt(0) == '/') { Url = Url.substring(1); }
 		try {
@@ -205,10 +210,7 @@ public class Folders {
 	
 	// Private Functions
 	private void GetLocalDir() {
-		CLoader = Thread.currentThread().getContextClassLoader();
-		String ThisClass = "closset/Folders.class";
-		String tmpDir = CLoader.getResource(ThisClass).getPath();
-		LocalDir = CleanUrl( tmpDir.substring( 0, tmpDir.indexOf(ThisClass) ) );
+		LocalDir = GetLocalUrl(this);
 	}
 	
 	// Public Classes
