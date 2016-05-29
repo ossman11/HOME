@@ -3,6 +3,7 @@
  */
 package com;
 
+import entrance.HOME;
 import network.HTTP.HTTPHandler;
 
 /**
@@ -11,18 +12,25 @@ import network.HTTP.HTTPHandler;
  */
 public class Page {
 	// Public Values
-	public static final String url = "";
-	public static final String title = "";
-	
+	public String url = "";
+	public String title = "";
+
 	// Private Values
+	public HOME H;
 	
 	
 	// Public Functions
-	public static String doGet(HTTPHandler Req) {
+	public void init(HOME h){
+		H = h;
+	}
+
+	public void close(){}
+
+	protected String doGet(HTTPHandler Req) {
 		return null;
 	}
-	
-	public static String doPost(HTTPHandler Req) {
+
+	protected String doPost(HTTPHandler Req) {
 		return null;
 	}
 	
@@ -33,4 +41,5 @@ public class Page {
 	// Private Classes
 	
 	// Page Constructors
+	public Page(){}
 }

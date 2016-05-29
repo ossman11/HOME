@@ -1,11 +1,9 @@
 /**
  * 
  */
-package com.web;
-
-import network.HTTP.HTTPHandler;
 
 import com.Page;
+import network.HTTP.HTTPHandler;
 
 /**
  * @author laptop
@@ -13,19 +11,18 @@ import com.Page;
  */
 public class Devices extends Page {
 	// Public Values
-	public static final String url = "/Devices";
-	public static final String title = "Devices";
+
 	
 	// Private Values
-	
+	private static final String URL = "/Devices";
+	private static final String TITLE = "Devices";
 	
 	// Public Functions
-	public static String doGet(HTTPHandler Req) {
-		
+	protected String doGet(HTTPHandler Req) {
 		return	"<h1>Devices</h1>";
 	}
-	
-	public static String doPost(HTTPHandler Req) {
+
+	protected String doPost(HTTPHandler Req) {
 		return "<html><head></head><body><h1>Welcome Home</h1>" + Req.Content + "</body></html>";
 	}
 	
@@ -36,4 +33,8 @@ public class Devices extends Page {
 	// Private Classes
 	
 	// Page Constructors
+	public Devices(){
+		url = URL;
+		title = TITLE;
+	}
 }

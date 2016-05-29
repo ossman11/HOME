@@ -5,26 +5,12 @@ package entrance;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Writer;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.concurrent.ThreadLocalRandom;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import closset.DataBase;
-import closset.DataBase.BOOL;
-import closset.DataBase.INT;
-import closset.DataBase.SubTable;
-import closset.DataBase.TEXT;
-import closset.DataBase.Table;
 import closset.Folders;
 import network.DB;
 import network.FTP;
@@ -50,52 +36,64 @@ public class HOME {
 	// Public Values
 	public Folders folder = null;
 	public DataBase database = null;
-	
-	public HTTP http = null;
+
 	public FTP ftp = null;
 	public DB db = null;
-	
-	public int Threads = 1;
-	
-	public ArrayList<WeakReference<char[]>> chunks;
-	public ReferenceQueue<char[]> chunkqueue;
-	
+
 	// Private Values
-	
+	private static final ZoneId GMT = ZoneId.of("GMT");
+
+	private HTTP http = null;
+
 	// Public Functions
 	public String getServerTime() {
-	    Calendar calendar = Calendar.getInstance();
-	    SimpleDateFormat dateFormat = new SimpleDateFormat(
-	        "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-	    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-	    return dateFormat.format(calendar.getTime());
+	    return DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(GMT));
 	}
 	
 	// Private Functions
-	private void CommandListener(){
+	private void runCommand(String in){
+		String[] command = in.split(":");
+		switch(command[0].toLowerCase()){
+			case "reload":
+				http.Reload();
+				System.out.println("HTTP Cache updated");
+
+				break;
+			case "exit":
+				http.stop();
+				http = null;
+				System.out.println("HTTP Server shutdown");
+
+				database.Auth.Save();
+				database.Auth.Dispose();
+				for(DataBase.Table t : database.tables){
+					t.Save();
+					t.Dispose();
+				}
+				database = null;
+				System.out.println("Saved database");
+
+				folder = null;
+
+				try {
+					System.in.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				System.exit(0);
+				break;
+			default: System.out.println("unknown command: " + command[0]);
+				break;
+		}
+	}
+
+	private void CommandListener(String[] args){
 		System.out.println("Listening to commands:");
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-			String[] in = null;
-			while((in = br.readLine().split(":")) != null){
-				switch(in[0].toLowerCase()){
-					case "reload": http.Reload();
-						System.out.println("HTTP Cache updated");
-						break;
-					case "find": 
-						long s = new Date().getTime();
-						SubTable result = database.tables.get(0).Find("First", in[1]);
-						long e = new Date().getTime();
-						
-						System.out.println(result.toString());
-						
-						System.out.println(in[1]+ " was found: " + result.Size() + " times.");
-						System.out.println("the search took: " + (e-s) + "ms");
-						System.out.println(database.tables.get(0).Size()/(e-s) + " lines per ms");
-						break;
-					default: System.out.println("unknown command: " + in[0]);
-						break;
-				}
+			String in = null;
+			while((in = br.readLine()) != null){
+				runCommand(in);
 			}
 		} catch (IOException ioe) {
 		   System.out.println("End of input stream.");
@@ -107,46 +105,14 @@ public class HOME {
 	
 	// HTTP Constructors
 	
-	public HOME() {
-		Threads = Runtime.getRuntime().availableProcessors();
-		// Initiation Backend
+	public HOME(String[] args) {
+		// Init Backend
 		folder = new Folders();
 		database = new DataBase(this);
-		// construct a test table
-		Table names = database.CreateTable("Names", 
-				new String[]{ "First", "Last", "Age", "Sex" },
-				new Class<?>[]{TEXT.class, TEXT.class, INT.class, BOOL.class});	
-		
-		database.tables.add(names);
-		
-		System.out.println(names.Size());
-		System.out.println("Loaded Database");
-
-		// Starts Servers
-		System.out.println("Starting up Servers");
+		// Init HTTP server
 		http = new HTTP(this);
-		
-		List<String> FirstNames = folder.LoadLocalFileList("test-data/NAMES/first-names.txt");
-		int TN = FirstNames.size();
-		
-		// used to write directly to disk
-		// Writer namesWriter = database.OpenTable("Names");
-		ThreadLocalRandom random = ThreadLocalRandom.current();
-		
-		while(names.Size() < 100000000){
-		
-			names.Add(new Object[]{
-					FirstNames.get( random.nextInt(TN) ).toCharArray(),
-					FirstNames.get( random.nextInt(TN) ).toCharArray(),
-					(random.nextInt(100)),
-					random.nextBoolean()});
-		}
-		// disabled to prevent a giant database to be saved to disk
-		// names.Save();
-	
-		// type find:(Some name) to search the database for rows with this name
-		// personal results would be between 60k and 90k lines being processed per millisecond
-		CommandListener();
+		// Listen for server sided commands
+		CommandListener(args);
 	}
 	
 	/**
@@ -154,6 +120,6 @@ public class HOME {
 	 * Starts HOME server
 	 */
 	public static void main(String[] args) {
-		new HOME();
+		new HOME(args);
 	}
 }

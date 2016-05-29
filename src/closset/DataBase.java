@@ -1,18 +1,15 @@
 package closset;
 
-import java.io.BufferedReader;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Writer;
-import java.lang.ref.WeakReference;
+import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
 import entrance.HOME;
+
+import static java.util.Arrays.*;
 
 /**
  * @author Bob den Os
@@ -35,12 +32,17 @@ public class DataBase {
 		}
 		return ret;
 	}
-	/*
+
+	public AnalyticsTable CreateAnalyticsTable(String name){
+		return new AnalyticsTable(name);
+	}
+	/**
 	public Table Find( String table, String Field, String Val) {
 		return Find(table,new String[]{Field}, new String[]{Val});
 	}
 	*/
-	/*
+
+	/**
 	public Table Find( String table, String[] Field, String[] val) {
 		Table ret = new Table(table);
 		BufferedReader d = null;
@@ -163,7 +165,7 @@ public class DataBase {
 			e.printStackTrace();
 			return false;
 		}
-		return false;
+		return true;
 	}
 	
 	public boolean Add( Writer out, Row row ) {
@@ -174,7 +176,7 @@ public class DataBase {
 			e.printStackTrace();
 			return false;
 		}
-		return false;
+		return true;
 	}
 	
 	public Writer OpenTable(String table){
@@ -204,18 +206,20 @@ public class DataBase {
 				out.write( "Data:" + System.lineSeparator() );
 				
 				out.flush();
-				for(int i=0;i<Data.size()-1;i++){
-					out.write(Data.get(i));
+				if(Data.size() > 0) {
+					for (int i = 0; i < Data.size() - 1; i++) {
+						out.write(Data.get(i));
+						out.flush();
+					}
+					int left = (Size % chunkSize) * Meta.Size;
+					if (left == 0 && (Size / chunkSize) == Data.size()) {
+						out.write(Data.get(Data.size() - 1));
+					} else {
+						out.write(Data.get(Data.size() - 1), 0, left);
+					}
 					out.flush();
+					out.close();
 				}
-				int left = (Size%chunkSize)*Meta.Size;
-				if(left == 0 && (Size/chunkSize) == Data.size()){
-					out.write(Data.get(Data.size()-1));
-				} else {
-					out.write(Data.get(Data.size()-1),0,left);
-				}				
-				out.flush();
-				out.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -517,10 +521,12 @@ public class DataBase {
 		}
 		
 		public void write(Writer out) throws IOException {
-			out.write( "Row:" + System.lineSeparator() );
-			for(int i = 0; i < Par.Meta.Type.length; i++ ) {
-				out.write(GetString(i));
-				out.write( System.lineSeparator() );
+			int localStart = (int)start%Par.chunkSize;
+			int localEnd = localStart + Par.Meta.Size;
+			char[] chunk = Par.Data.get((int)start/Par.chunkSize);
+
+			for(int i=localStart;i<localStart;i++) {
+				out.write(chunk[i]);
 			}
 		}
 		
@@ -670,9 +676,436 @@ public class DataBase {
 		
 		// Meta constructors
 		public Meta(String[] field, Class<?>[] type) {
-			Field = Arrays.asList(field);
+			Field = asList(field);
 			Type = type;
 			getSize();
+		}
+	}
+
+	public class AnalyticsTable {
+		/**
+		 *  Heavy indexed table for analytics actions
+		 *  Dynamic columns and data types
+		 *  Accumulative by collecting data, indexing and analyze
+		 *  Prevent running multiple tasks on this type of table
+		 *  As all data is only stored once into memory and Will create memory locks
+		 *  Which decrease performance on all parallel tasks
+ 		 */
+		public String TableName = "";
+		// store raw data with their DataKey
+		private HashMap<String, MemoryObject> Data = null;
+		// Store all Columns
+		private HashMap<String, Column> Columns = null;
+		// Store all Row keys
+		private Set<String> RowNames = null;
+		private MessageDigest hasher = null;
+
+		// public functions
+		public int size(){return RowNames.size();}
+
+		public void addRow(String id, String[] cols, Object[] data){
+			if(cols.length != data.length){ System.out.println("Failed to add data"); return; }
+			RowNames.add(id);
+			for(int i=0; i<cols.length;i++){
+				String hash = addRawData(data[i]);
+				Pair curPair = new Pair(id,hash);
+				addData(cols[i],curPair);
+			}
+		}
+
+		public String getColumnAsString(String name){
+			Column col = Columns.get(name);
+			StringBuilder ret = new StringBuilder();
+			int size = col.Size();
+			for(int i=0; i<size;i++){
+				ret.append( col.get(i).toString() );
+				ret.append( "<br/>" );
+			}
+			return ret.toString();
+		}
+
+		public byte[] getRawData(String key){
+			return Data.get(key).getRaw();
+		}
+
+		public Object getData(String key){
+			return Data.get(key).get();
+		}
+
+		public Object[] getAllData(){
+			Set<String> keys = Data.keySet();
+			Object[] ret = new Object[keys.size()];
+			int i = 0;
+			for(String k : keys){
+				ret[i] = getData(k);
+				i++;
+			}
+			return ret;
+		}
+
+		public void save(){
+			try {
+				// Store all RawData into a data file
+				FileOutputStream out = H.folder.SaveLocalFileBinary( "db/" + TableName + "/raw.data" );
+				for (String k : Data.keySet()) {
+					byte[] cur = Data.get(k).getRaw();
+					out.write( BinaryData.parse(cur.length) );
+					out.write( cur );
+					out.flush();
+				}
+				out.close();
+				// Store all colum key:value pairs
+				for(String k : Columns.keySet()){
+					Columns.get(k).save();
+				}
+				// Store all row names
+				if(RowNames.size() > 0) {
+					out = H.folder.SaveLocalFileBinary("db/" + TableName + "/name.row");
+					String[] rows = RowNames.toArray(new String[RowNames.size()]);
+					int length = BinaryData.parse(rows[0]).length;
+					out.write( BinaryData.parse( length ) );
+					for (String r : rows) {
+						out.write(BinaryData.parse(r));
+						out.flush();
+					}
+					out.close();
+				}
+			} catch ( Exception e){
+				e.printStackTrace();
+			}
+		}
+
+		public void load(){
+			InputStream in = H.folder.LoadLocalFileStream( "db/" + TableName + "/raw.data" );
+			if(in == null){return;}
+			byte[] lengthBuffer = new byte[5];
+			byte[] buffer;
+			try {
+				// Load all RawDate
+				while(true) {
+					if(in.read(lengthBuffer) < 0 ){break;}
+					int length = (int) BinaryData.parse(lengthBuffer);
+					buffer = new byte[length];
+
+					if(in.read(buffer) < 0 ){break;}
+					MemoryObject cur = new MemoryObject(buffer);
+					Data.put(cur.getHash(), cur);
+				}
+				in.close();
+				// Load in all columns based upon the .col files
+				Iterator<Path> rows = H.folder.GetDirFiles("db/" + TableName + "/");
+				while(rows.hasNext()){
+					Path cur = rows.next();
+					String filename = cur.getFileName().toString();
+					if(filename.endsWith(".col")){
+						addColumn(filename.substring(0,filename.length()-4)).load();
+					}
+				}
+				// Load all row names
+				in = H.folder.LoadLocalFileStream( "db/" + TableName + "/name.row" );
+				lengthBuffer = new byte[5];
+				if(in != null){
+					if(in.read(lengthBuffer) > -1) {
+						int nameLength = (int) BinaryData.parse(lengthBuffer);
+						byte[] rowName = new byte[nameLength];
+						while (in.read(rowName) > -1) {
+							RowNames.add((String) BinaryData.parse(rowName));
+						}
+
+					}
+					in.close();
+				}
+
+			} catch (Exception e){
+				e.printStackTrace();
+			}
+		}
+
+		// private function
+		private String addRawData(byte[] dat){
+			MemoryObject mem = new MemoryObject(dat);
+			Data.put(mem.getHash(), mem);
+			return mem.getHash();
+		}
+
+		private String addRawData(Object dat){
+			MemoryObject mem = new MemoryObject(dat);
+			Data.put(mem.getHash(), mem);
+			return mem.getHash();
+		}
+
+		private void addData(String col, Pair dat){
+			Column column = getColumn(col);
+			column.add(dat);
+		}
+
+		private Column addColumn(String name) {
+			Column col = Columns.get(name);
+			if(col == null){
+				col = new Column(this, name);
+				Columns.put(name, col);
+			}
+			return col;
+		}
+
+		private Column getColumn(String col){
+			Column ret = Columns.get(col);
+			if(ret == null){ret = addColumn(col);}
+			return ret;
+		}
+
+		private String hash(Object o){
+			return hash(BinaryData.parse(o));
+		}
+
+		private String hash(byte[] o){
+			return new String(hasher.digest(o));
+		}
+
+		public AnalyticsTable(String TableName){
+			this.TableName = TableName;
+			try {
+				hasher = MessageDigest.getInstance("MD5");
+			} catch (NoSuchAlgorithmException e) {
+				e.printStackTrace();
+			}
+			// Create data storage
+			Data = new HashMap<String, MemoryObject>();
+			// Create Column storage
+			Columns = new HashMap<String, Column>();
+			// Create Row Key index
+			RowNames = new HashSet<String>();
+		}
+
+		private class Column{
+			/**
+			 * Stores all contents for this column
+			 * Sorted ASC for easy analytics functions
+			 * For highest/smallest Selections
+			 * For Range Selections
+			 */
+			// Column contents
+			private ArrayList<Pair> Contents = null;
+			public String name = "";
+
+			// public functions
+			public int Size(){
+				return Contents.size();
+			}
+
+			public void save(){
+				try {
+					FileOutputStream out = H.folder.SaveLocalFileBinary( "db/" + TableName + "/" + name + ".col" );
+					out.write( BinaryData.parse(Contents.get(0).Key.length()) );
+					for (Pair p : Contents) {
+						out.write( BinaryData.parse(p.Key) );
+						out.write( BinaryData.parse(p.ValueKey) );
+						out.flush();
+					}
+					out.close();
+				} catch ( Exception e){
+					e.printStackTrace();
+				}
+			}
+
+			public void load(){
+				try {
+					InputStream in = H.folder.LoadLocalFileStream( "db/" + TableName + "/" + name + ".col");
+					byte[] lengthBuffer = new byte[5];
+					in.read(lengthBuffer);
+					int keyLength = (int)BinaryData.parse(lengthBuffer);
+					byte[] rowkey = new byte[keyLength];
+					byte[] valuekey = new byte[keyLength];
+					while(in.read(rowkey) > -1 && in.read(valuekey) > -1){
+						this.add(new Pair( (String)BinaryData.parse(rowkey), (String)BinaryData.parse(valuekey)));
+					}
+					in.close();
+				} catch ( Exception e){
+					e.printStackTrace();
+				}
+			}
+
+			public void add(Pair set){
+				Contents.add(set);
+				//TODO sort insert
+			}
+
+			public Object get(int id){
+				return BinaryData.parse( getRawData(Contents.get(id).ValueKey) );
+			}
+
+			// Searches the sorted Data for an range of this Data
+			public int[] FindByData(String Key){
+				// TODO look through sorted data
+				byte[] value = getRawData(Key);
+
+				return new int[0];
+			}
+
+			// Searches the Column pairs for the id of the Row variable
+			public int FindByRow(String Key){
+				int Size = this.Size();
+				if(Size < 1){return -1;}
+				if(Size < 4){
+					for(int i=0; i<Size;i++){
+						if(Contents.get(i).Key == Key){return i;}
+					}
+				} else {
+					int QSize = Size/4; int HSize = Size/2;
+					if(Contents.get(0).Key == Key){return 0;}
+					// Loop Through the keys till the key is found
+					int x=HSize;
+					int y=HSize+1;
+					int z=Size-1;
+					for(int i=1; i<QSize; i++){
+						if(Contents.get(i).Key == Key){return i;}
+						if(Contents.get(x).Key == Key){return x;}
+						if(Contents.get(y).Key == Key){return y;}
+						if(Contents.get(z).Key == Key){return z;}
+						x--;y++;z--;
+					}
+				}
+
+				return -1;
+			}
+
+			public Column(AnalyticsTable par, String name){
+				Contents = new ArrayList<Pair>();
+				this.name = name;
+			}
+		}
+
+		private class Pair{
+			/**
+			 * Stores an HashKey for the row ID
+			 * Combined with an HashKey for the value
+			 * Which allows for minimal data replication
+			 */
+			// links an key with an value key
+			private String Key;
+			private String ValueKey;
+
+			public Pair(String k, String v){
+				Key = k;
+				ValueKey = v;
+				// Data.get(ValueKey).link();
+			}
+		}
+
+		private class MemoryObject{
+			private byte[] raw = null;
+			private String hash = "";
+			private int links = 0;
+
+			public Object get(){
+				return BinaryData.parse(raw);
+			}
+
+			public byte[] getRaw(){
+				return raw;
+			}
+
+			public String getHash(){
+				return hash;
+			}
+
+			public int link(){
+				return links++;
+			}
+
+			public MemoryObject(byte[] data){
+				raw = data;
+				hash = hash(raw);
+			}
+
+			public MemoryObject(Object data){
+				this( BinaryData.parse(data) );
+			}
+		}
+	}
+
+	static public class BinaryData{
+		private static final byte[] NULL = new byte[0];
+		private static final byte[] TRUE = new byte[]{ 1 };
+		private static final byte[] FALSE = new byte[]{ 0 };
+
+		public enum Type{
+			NULL (0, null),
+			BOOLEAN (1, Boolean.class),
+			INTEGER (2, Integer.class),
+			STRING (3, String.class);
+
+			// private variables
+			private final byte sign;
+			private final Class<?> typeClass;
+
+			// public functions
+			public boolean compare(Class<?> a){
+				return (a == typeClass);
+			}
+
+			public static Object empty(byte s){
+				Type[] all = Type.values();
+				try {
+					return all[s].typeClass.newInstance();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				return null;
+			}
+
+			// constructor
+			Type(int sign, Class<?> tc){
+				this.sign = (byte)sign;
+				this.typeClass = tc;
+			}
+		}
+
+		public static byte[] parse(Object in){
+			if(in == null){return NULL;}
+
+			Class<?> type = in.getClass();
+			if(Type.BOOLEAN.compare(type)){
+				return ( ((boolean)in) ? TRUE : FALSE);
+			}
+			if(Type.INTEGER.compare(type)) {
+				return ByteBuffer.allocate(5).put(0,Type.INTEGER.sign).putInt(1,(int)in).array();
+			}
+			if(Type.STRING.compare(type)){
+				byte[] string = ((String)in).getBytes();
+				ByteBuffer buff = ByteBuffer.allocate(string.length+1).put(Type.STRING.sign);
+				return buff.put(string).array();
+			}
+
+			return NULL;
+		}
+
+		public static Object parse(byte[] in){
+			// null
+			if(in.length == 0){return null;}
+			// boolean and empty object
+			if(in.length == 1){
+				if(in[0] == 0){ return false; }
+				if(in[0] == 1){ return true; }
+				// empty objects
+				return Type.empty(in[0]);
+			}
+			byte type = in[0];
+			byte[] sub = Arrays.copyOfRange(in, 1 ,in.length);
+			// Integer
+			if(type == Type.INTEGER.sign){
+				return ByteBuffer.wrap(sub).getInt();
+			}
+			// String
+			if(type == Type.STRING.sign){
+				return new String(sub);
+			}
+
+			return null;
+		}
+		// compare two pieces of data
+		public static int compare(byte[] A, byte[] B){
+			return 0;
 		}
 	}
 
@@ -821,7 +1254,7 @@ public class DataBase {
 		}
 		
 		public static char[] fromChunk(char[] Data,int start){
-			return Arrays.copyOfRange(Data, start, start+s);
+			return copyOfRange(Data, start, start+s);
 		}
 		
 		public static boolean compareChunk(char[] Data,int start, Object b){
@@ -840,7 +1273,7 @@ public class DataBase {
 			int chunk = (int) (start/chunksize);
 			int localpos = (int) (start % chunksize);
 			
-			return Arrays.copyOfRange(Data.get(chunk), localpos, localpos+s);
+			return copyOfRange(Data.get(chunk), localpos, localpos+s);
 		}
 		
 		public static char[] toData(String V) {

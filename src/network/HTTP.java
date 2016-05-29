@@ -10,10 +10,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import entrance.HOME;
 
@@ -39,8 +36,15 @@ public class HTTP {
 	// Public Functions
 	public void Reload(){
 		M.Reload();
+		P.Reload();
 	}
-	
+
+	public void stop() {
+		OST.Running = false;
+		SST.Running = false;
+		P.stop();
+	}
+
 	// Private Functions
 	
 	// Public Classes
@@ -403,7 +407,7 @@ public class HTTP {
     }
 	
 	private class RequestThread extends Thread {
-		
+
 		// Public Values
 		public ArrayList<ArrayList<String>> queue = null;
 		public OutputStream Writer = null;
@@ -412,6 +416,8 @@ public class HTTP {
 		public Boolean Secure = false;
 		
 		// Private Values
+		private static final char split = (char)10;
+
 		private HandlerThread Child = null;
 		private InputStreamReader Reader = null;
 		
@@ -421,6 +427,10 @@ public class HTTP {
 			Secure = CType;
 			CSocket = socket;
         }
+
+		public boolean running(){
+			return !CSocket.isClosed();
+		}
 
         public void run() {
         	try {
@@ -433,15 +443,13 @@ public class HTTP {
         		char[] in = new char[1];
         		String buff = "";
         		// Buffered Data
-        		queue = new ArrayList<ArrayList<String>>();
-        		Child = new HandlerThread(this);
-        		Child.start();
         		ArrayList<String> RA = new ArrayList<String>();
+				HandlerThread last = null;
         		
-				while (Reader.read(in) > -1) {
+				while(!CSocket.isClosed() && Reader.read(in) > -1) {
 					buff+=in[0];
 					//System.out.println(((byte)in[0]));
-					if(in[0] == (char)10) {
+					if(in[0] == split) {
 						RA.add(buff);
 						if(buff.startsWith("Content-Length: ")){ CL = Integer.parseInt(buff.substring(16, buff.length()-2)) ;}
 						if((byte)buff.charAt(0) == 13)
@@ -453,14 +461,18 @@ public class HTTP {
 								CL--;
 							}
 							RA.add(buff);
-							queue.add(new ArrayList<String>(RA));
+
+							while(last != null && !last.Done()){}
+
+							last = new HandlerThread(this, RA);
+							last.start();
+
 							RA = new ArrayList<String>();
 						}
 						buff = "";
 					}
 				}
 				System.out.println("Quiting Request Thread");
-				Child.Quit();
 			} catch (IOException e) {
 				// it is almost supposed to happen.
 				// Without the message you don't even notice that using exceptions to kill threads is a bad idea.
@@ -485,53 +497,31 @@ public class HTTP {
 		// Private Values
 		private RequestThread Par = null;
 		private OutputStream out = null;
+		private ArrayList<String> ra = null;
+		private boolean done = false;
 		
-		public HandlerThread(RequestThread RT) {
-			System.out.println("Starting Handler Thread.");
+		public HandlerThread(RequestThread RT, ArrayList<String> RA) {
 			Par = RT;
 			out = Par.Writer;
+			ra = RA;
         }
 		
-		public void Quit()
+		public boolean Done()
 		{
-			Stopping = true;
-			while(Stopping){};
-			return;
+			return done;
 		}
 
         public void run() {
-        	HTTPHandler tmp = null;
-        	while(out != null && Par.queue != null)
-        	{
-        		if(Stopping || !Par.isAlive() || Par == null || out == null){return;}
-        		if(Par.queue.size() > 0 && Par != null && out != null) {
-        			try {
-        				ArrayList<String> tmpRA = Par.queue.get(0);
-        				if(tmpRA != null)
-        				{
-        					tmp = new HTTPHandler(tmpRA, Par.Secure);
-            				Par.queue.remove(0);
-            				if(tmp != null) {
-            					tmp.write(out);
-            					if(tmp.NotFound) {
-            						Par.CSocket.close();
-            						break;
-            					}
-            				}
-        				}
-    				} catch (IOException e) {
-    					break;
-    				}
-        		}
-        		try {
-					Thread.sleep(100l);
-				} catch (InterruptedException e) {
-					// Stop thread when interupted sleep
-					Stopping = true;
-				}
-        	}
-        	Stopping = false;
-        	System.out.println("Stopped Handler Thread.");
+        	HTTPHandler han = new HTTPHandler(ra, Par.Secure);
+			if(han != null) {
+				try {
+					han.write(out);
+					if(han.NotFound) {
+						Par.CSocket.close();
+					}
+				} catch (IOException e) {}
+			}
+			done = true;
         }
 	}
 	
@@ -629,6 +619,7 @@ public class HTTP {
 		}
 	
 		private String GetFileName(File c){
+			if(c == null){ return ""; }
 			String file = c.getAbsolutePath().replace("\\", "/");
 			return file.substring(file.indexOf("bin/")+4);
 		}

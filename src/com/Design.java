@@ -4,6 +4,7 @@
 package com;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author laptop
@@ -29,7 +30,7 @@ public class Design {
 			"</html>" + System.lineSeparator();
 	
 	// Public Functions
-	public static String Paginate(String Content, int Cur, ArrayList<String> URI, ArrayList<String> TITLES) {
+	public static String Paginate(String Content, int Cur, List<String> URI, List<String> TITLES) {
 		StringBuffer SB = new StringBuffer();
 		
 		SB.append(Head);
@@ -41,7 +42,7 @@ public class Design {
 	}
 	
 	// Private Functions
-	private static String Menu(int Cur, ArrayList<String> URI, ArrayList<String> TITLES ) {
+	private static String Menu(int Cur, List<String> URI, List<String> TITLES ) {
 		StringBuffer SB = new StringBuffer();
 		// Top Layer
 		SB.append("<div class='TopLayer'>");
